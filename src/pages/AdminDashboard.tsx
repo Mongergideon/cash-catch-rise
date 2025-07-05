@@ -136,19 +136,21 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Get total users
+      // Use service role to bypass RLS for admin queries
       const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact' });
+        .rpc('admin_get_user_count');
 
-      if (usersError) throw usersError;
+      if (usersError) {
+        console.error('Error fetching user count:', usersError);
+      }
 
-      // Get total wallet balances
+      // Get total wallet balances using RPC
       const { data: walletsData, error: walletsError } = await supabase
-        .from('profiles')
-        .select('wallet_earnings, wallet_funding');
+        .rpc('admin_get_wallet_totals');
 
-      if (walletsError) throw walletsError;
+      if (walletsError) {
+        console.error('Error fetching wallet totals:', walletsError);
+      }
 
       // Get pending withdrawals count
       const { data: withdrawalsData, error: withdrawalsError } = await supabase
@@ -156,15 +158,14 @@ const AdminDashboard = () => {
         .select('id', { count: 'exact' })
         .eq('status', 'pending');
 
-      if (withdrawalsError) throw withdrawalsError;
-
-      const totalEarnings = walletsData?.reduce((sum, profile) => sum + (profile.wallet_earnings || 0), 0) || 0;
-      const totalFunding = walletsData?.reduce((sum, profile) => sum + (profile.wallet_funding || 0), 0) || 0;
+      if (withdrawalsError) {
+        console.error('Error fetching withdrawals count:', withdrawalsError);
+      }
 
       setStats({
-        totalUsers: usersData?.length || 0,
-        totalEarnings,
-        totalFunding,
+        totalUsers: usersData || 0,
+        totalEarnings: walletsData?.[0]?.total_earnings || 0,
+        totalFunding: walletsData?.[0]?.total_funding || 0,
         pendingWithdrawals: withdrawalsData?.length || 0
       });
     } catch (error) {
@@ -176,12 +177,21 @@ const AdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
+      // Use RPC function to get all users with admin privileges
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .rpc('admin_get_all_users');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching users:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch users data",
+        });
+        return;
+      }
+
+      console.log('Fetched users:', data);
       setUsers(data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -190,16 +200,20 @@ const AdminDashboard = () => {
 
   const fetchWithdrawals = async () => {
     try {
+      // Fix the ambiguous relationship by specifying which profiles relationship to use
       const { data, error } = await supabase
         .from('withdrawals')
         .select(`
           *,
-          profiles(first_name, last_name, email)
+          profiles!withdrawals_user_id_fkey(first_name, last_name, email)
         `)
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching withdrawals:', error);
+        return;
+      }
       
       const typedData = data as unknown as Withdrawal[];
       setWithdrawals(typedData || []);
@@ -214,12 +228,15 @@ const AdminDashboard = () => {
         .from('transactions')
         .select(`
           *,
-          profiles(first_name, last_name, email)
+          profiles!transactions_user_id_fkey(first_name, last_name, email)
         `)
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching transactions:', error);
+        return;
+      }
       
       const typedData = data as unknown as Transaction[];
       setTransactions(typedData || []);
@@ -308,10 +325,10 @@ const AdminDashboard = () => {
 
   const banUser = async (userId: string, banned: boolean) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_banned: banned })
-        .eq('id', userId);
+      const { error } = await supabase.rpc('admin_ban_user', {
+        user_uuid: userId,
+        banned: banned
+      });
 
       if (error) throw error;
 
@@ -414,98 +431,107 @@ const AdminDashboard = () => {
         <TabsContent value="users">
           <Card>
             <CardHeader>
-              <CardTitle>User Management</CardTitle>
+              <CardTitle>User Management ({users.length} users)</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>Earnings</TableHead>
-                    <TableHead>Funding</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">
-                            {user.first_name} {user.last_name}
-                          </p>
-                          <p className="text-sm text-gray-600">{user.email}</p>
-                          <p className="text-xs text-gray-500">ID: {user.referral_code}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{user.current_plan}</Badge>
-                      </TableCell>
-                      <TableCell>₦{user.wallet_earnings?.toLocaleString() || 0}</TableCell>
-                      <TableCell>₦{user.wallet_funding?.toLocaleString() || 0}</TableCell>
-                      <TableCell>
-                        <Badge variant={user.is_banned ? 'destructive' : 'default'}>
-                          {user.is_banned ? 'Banned' : 'Active'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setSelectedUser(user)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Update User Wallet</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <Label>Wallet Type</Label>
-                                  <select
-                                    value={walletType}
-                                    onChange={(e) => setWalletType(e.target.value as 'funding' | 'earnings')}
-                                    className="w-full p-2 border rounded"
-                                  >
-                                    <option value="funding">Funding</option>
-                                    <option value="earnings">Earnings</option>
-                                  </select>
-                                </div>
-                                <div>
-                                  <Label>Amount (use negative for debit)</Label>
-                                  <Input
-                                    type="number"
-                                    value={walletAmount}
-                                    onChange={(e) => setWalletAmount(e.target.value)}
-                                    placeholder="Enter amount"
-                                  />
-                                </div>
-                                <Button onClick={updateUserWallet} className="w-full">
-                                  Update Wallet
-                                </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          <Button
-                            size="sm"
-                            variant={user.is_banned ? "default" : "destructive"}
-                            onClick={() => banUser(user.id, !user.is_banned)}
-                          >
-                            {user.is_banned ? <UserPlus className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </TableCell>
+              {users.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No users found. This could indicate an issue with data fetching.</p>
+                  <Button onClick={fetchUsers} className="mt-4">
+                    Refresh Users
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Earnings</TableHead>
+                      <TableHead>Funding</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">
+                              {user.first_name} {user.last_name}
+                            </p>
+                            <p className="text-sm text-gray-600">{user.email}</p>
+                            <p className="text-xs text-gray-500">ID: {user.referral_code}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{user.current_plan}</Badge>
+                        </TableCell>
+                        <TableCell>₦{user.wallet_earnings?.toLocaleString() || 0}</TableCell>
+                        <TableCell>₦{user.wallet_funding?.toLocaleString() || 0}</TableCell>
+                        <TableCell>
+                          <Badge variant={user.is_banned ? 'destructive' : 'default'}>
+                            {user.is_banned ? 'Banned' : 'Active'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setSelectedUser(user)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Update User Wallet</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label>Wallet Type</Label>
+                                    <select
+                                      value={walletType}
+                                      onChange={(e) => setWalletType(e.target.value as 'funding' | 'earnings')}
+                                      className="w-full p-2 border rounded"
+                                    >
+                                      <option value="funding">Funding</option>
+                                      <option value="earnings">Earnings</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <Label>Amount (use negative for debit)</Label>
+                                    <Input
+                                      type="number"
+                                      value={walletAmount}
+                                      onChange={(e) => setWalletAmount(e.target.value)}
+                                      placeholder="Enter amount"
+                                    />
+                                  </div>
+                                  <Button onClick={updateUserWallet} className="w-full">
+                                    Update Wallet
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                            <Button
+                              size="sm"
+                              variant={user.is_banned ? "default" : "destructive"}
+                              onClick={() => banUser(user.id, !user.is_banned)}
+                            >
+                              {user.is_banned ? <UserPlus className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
