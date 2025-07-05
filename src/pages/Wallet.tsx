@@ -11,6 +11,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
+// Declare FlutterwaveCheckout for TypeScript
+declare global {
+  interface Window {
+    FlutterwaveCheckout: (config: any) => void;
+  }
+}
+
 interface WalletData {
   wallet_funding: number;
   wallet_earnings: number;
@@ -143,16 +150,17 @@ const Wallet = () => {
         },
       };
 
-      // @ts-ignore - FlutterwaveCheckout is loaded via script
-      if (typeof FlutterwaveCheckout !== 'undefined') {
-        FlutterwaveCheckout(flutterwaveConfig);
+      // Check if FlutterwaveCheckout is available
+      if (typeof window.FlutterwaveCheckout !== 'undefined') {
+        window.FlutterwaveCheckout(flutterwaveConfig);
       } else {
         // Fallback: Load Flutterwave script dynamically
         const script = document.createElement('script');
         script.src = 'https://checkout.flutterwave.com/v3.js';
         script.onload = () => {
-          // @ts-ignore
-          FlutterwaveCheckout(flutterwaveConfig);
+          if (window.FlutterwaveCheckout) {
+            window.FlutterwaveCheckout(flutterwaveConfig);
+          }
         };
         document.head.appendChild(script);
       }
