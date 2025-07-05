@@ -1,150 +1,321 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Play, Trophy, Coins, RotateCcw, Brain } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Gamepad2, 
+  Coins, 
+  RotateCcw, 
+  Brain, 
+  TrendingUp, 
+  Gift,
+  Wallet,
+  Users
+} from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+
+interface Profile {
+  wallet_earnings: number;
+  wallet_funding: number;
+  current_plan: string;
+  plan_expires_at: string;
+  first_name: string;
+}
+
+interface DailyEarnings {
+  total_earned: number;
+}
 
 const Index = () => {
-  const [todayEarnings, setTodayEarnings] = useState(0);
-  const [dailyCap, setDailyCap] = useState(3000);
-  const [currentPlan, setCurrentPlan] = useState('Free Trial');
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [dailyEarnings, setDailyEarnings] = useState<DailyEarnings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+      fetchDailyEarnings();
+    } else {
+      navigate('/auth');
+    }
+  }, [user, navigate]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('wallet_earnings, wallet_funding, current_plan, plan_expires_at, first_name')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDailyEarnings = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('daily_earnings')
+        .select('total_earned')
+        .eq('user_id', user.id)
+        .eq('date', new Date().toISOString().split('T')[0])
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setDailyEarnings(data || { total_earned: 0 });
+    } catch (error) {
+      console.error('Error fetching daily earnings:', error);
+    }
+  };
+
+  const claimDailyBonus = async () => {
+    if (!user) return;
+
+    try {
+      const bonusAmount = Math.floor(Math.random() * 401) + 100; // ₦100-₦500
+      
+      const { error: bonusError } = await supabase
+        .from('daily_bonus')
+        .insert({
+          user_id: user.id,
+          amount: bonusAmount
+        });
+
+      if (bonusError) {
+        if (bonusError.code === '23505') {
+          toast({
+            variant: "destructive",
+            title: "Already Claimed",
+            description: "You've already claimed today's bonus",
+          });
+          return;
+        }
+        throw bonusError;
+      }
+
+      // Update wallet balance
+      const { error: walletError } = await supabase.rpc('update_wallet_balance', {
+        user_uuid: user.id,
+        wallet_type: 'earnings',
+        amount: bonusAmount,
+        transaction_description: 'Daily login bonus'
+      });
+
+      if (walletError) throw walletError;
+
+      toast({
+        title: "Daily Bonus Claimed!",
+        description: `You earned ₦${bonusAmount.toLocaleString()}`,
+      });
+
+      fetchProfile();
+      fetchDailyEarnings();
+    } catch (error) {
+      console.error('Error claiming daily bonus:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to claim daily bonus",
+      });
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="p-8 text-center">
+        <h2 className="text-2xl font-bold mb-4">Welcome to Cash Catch Rise</h2>
+        <p className="mb-6">Please login to start earning money by playing games!</p>
+        <Link to="/auth">
+          <Button className="gradient-primary text-white">
+            Login / Register
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center">
+        <p>Loading your dashboard...</p>
+      </div>
+    );
+  }
 
   const games = [
     {
-      id: 1,
-      name: 'Cashing Money Falling',
-      description: 'Tap falling money to earn rewards',
-      icon: Coins,
-      earnings: '₦10 - ₦500 per tap',
-      color: 'gradient-primary',
-      route: '/game/money-falling'
+      title: 'Cashing Money Falling',
+      description: 'Tap falling money to earn real cash',
+      icon: <Coins className="h-8 w-8 text-yellow-500" />,
+      route: '/game/money-falling',
+      color: 'from-yellow-400 to-yellow-600'
     },
     {
-      id: 2,
-      name: 'Coin Catcher Runner',
-      description: 'Endless runner collecting coins',
-      icon: Play,
-      earnings: 'Distance × Coins',
-      color: 'gradient-secondary',
-      route: '/game/coin-runner'
+      title: 'Coin Runner',
+      description: 'Endless runner with coin collection',
+      icon: <Gamepad2 className="h-8 w-8 text-blue-500" />,
+      route: '/game/coin-runner',
+      color: 'from-blue-400 to-blue-600'
     },
     {
-      id: 3,
-      name: 'Spin to Win',
+      title: 'Spin to Win',
       description: 'Spin the wheel every 2 hours',
-      icon: RotateCcw,
-      earnings: '₦50 - ₦500 per spin',
-      color: 'gradient-gold',
-      route: '/game/spin-wheel'
+      icon: <RotateCcw className="h-8 w-8 text-purple-500" />,
+      route: '/game/spin-wheel',
+      color: 'from-purple-400 to-purple-600'
     },
     {
-      id: 4,
-      name: 'Memory Flip',
+      title: 'Memory Flip',
       description: 'Match Naira pairs under timer',
-      icon: Brain,
-      earnings: '₦200 per match',
-      color: 'bg-gradient-to-br from-purple-500 to-pink-500',
-      route: '/game/memory-flip'
+      icon: <Brain className="h-8 w-8 text-green-500" />,
+      route: '/game/memory-flip',
+      color: 'from-green-400 to-green-600'
     }
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      {/* Daily Progress Card */}
-      <Card className="bg-white shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Today's Progress</span>
-            <Trophy className="text-yellow-500" size={24} />
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm text-gray-600 mb-2">
-                <span>Earnings: ₦{todayEarnings.toLocaleString()}</span>
-                <span>Cap: ₦{dailyCap.toLocaleString()}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div
-                  className="gradient-secondary h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min((todayEarnings / dailyCap) * 100, 100)}%` }}
-                ></div>
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm text-gray-600">Current Plan</p>
-                <p className="font-semibold text-primary">{currentPlan}</p>
-              </div>
-              <Link to="/plans">
-                <Button variant="outline" size="sm">
-                  Upgrade Plan
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="p-6 space-y-6">
+      {/* Welcome Section */}
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-gray-900">
+          Welcome back, {profile?.first_name || 'Player'}! 👋
+        </h1>
+        <p className="text-gray-600 mt-2">Ready to earn some money today?</p>
+      </div>
 
-      {/* Games Grid */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-gray-900">Game Center</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {games.map((game) => {
-            const IconComponent = game.icon;
-            return (
-              <Card key={game.id} className="bg-white shadow-lg hover:shadow-xl transition-shadow cursor-pointer group">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-16 h-16 ${game.color} rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform`}>
-                      <IconComponent className="text-white" size={32} />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg text-gray-900 mb-1">{game.name}</h3>
-                      <p className="text-gray-600 text-sm mb-2">{game.description}</p>
-                      <p className="text-green-600 font-semibold text-sm">{game.earnings}</p>
-                    </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <Wallet className="h-8 w-8 text-green-500 mr-3" />
+            <div>
+              <p className="text-2xl font-bold">₦{profile?.wallet_earnings?.toLocaleString() || '0'}</p>
+              <p className="text-gray-600">Earnings</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <TrendingUp className="h-8 w-8 text-blue-500 mr-3" />
+            <div>
+              <p className="text-2xl font-bold">₦{dailyEarnings?.total_earned?.toLocaleString() || '0'}</p>
+              <p className="text-gray-600">Today's Earnings</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <Users className="h-8 w-8 text-purple-500 mr-3" />
+            <div>
+              <Badge variant="outline" className="capitalize">
+                {profile?.current_plan?.replace('_', ' ') || 'Free Trial'}
+              </Badge>
+              <p className="text-gray-600 mt-1">Current Plan</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="flex items-center p-6">
+            <Gift className="h-8 w-8 text-red-500 mr-3" />
+            <div>
+              <Button 
+                onClick={claimDailyBonus}
+                variant="outline" 
+                size="sm"
+                className="mb-1"
+              >
+                Claim Bonus
+              </Button>
+              <p className="text-gray-600 text-xs">Daily ₦100-₦500</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Games Section */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">🎮 Games</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {games.map((game, index) => (
+            <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <Link to={game.route}>
+                <CardHeader>
+                  <div className={`w-16 h-16 rounded-full bg-gradient-to-r ${game.color} flex items-center justify-center mb-3`}>
+                    {game.icon}
                   </div>
-                  <Link to={game.route}>
-                    <Button className="w-full mt-4 gradient-primary text-white">
-                      Play Now
-                    </Button>
-                  </Link>
+                  <CardTitle className="text-xl">{game.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 mb-4">{game.description}</p>
+                  <Button className="w-full gradient-primary text-white">
+                    Play Now
+                  </Button>
                 </CardContent>
-              </Card>
-            );
-          })}
+              </Link>
+            </Card>
+          ))}
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-white shadow-lg">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary">₦0</p>
-            <p className="text-sm text-gray-600">Total Earned</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white shadow-lg">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-secondary">0</p>
-            <p className="text-sm text-gray-600">Games Played</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white shadow-lg">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-yellow-500">1</p>
-            <p className="text-sm text-gray-600">Current Streak</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white shadow-lg">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-purple-500">0</p>
-            <p className="text-sm text-gray-600">Referrals</p>
-          </CardContent>
-        </Card>
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">⚡ Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link to="/wallet">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="flex items-center p-6">
+                <Wallet className="h-8 w-8 text-green-500 mr-3" />
+                <div>
+                  <p className="font-semibold">View Wallet</p>
+                  <p className="text-sm text-gray-600">Check balances & withdraw</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          <Link to="/plans">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="flex items-center p-6">
+                <TrendingUp className="h-8 w-8 text-blue-500 mr-3" />
+                <div>
+                  <p className="font-semibold">Upgrade Plan</p>
+                  <p className="text-sm text-gray-600">Increase daily earnings</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          
+          <Link to="/referral">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="flex items-center p-6">
+                <Users className="h-8 w-8 text-purple-500 mr-3" />
+                <div>
+                  <p className="font-semibold">Refer Friends</p>
+                  <p className="text-sm text-gray-600">Earn ₦500 per referral</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
       </div>
     </div>
   );
