@@ -17,6 +17,8 @@ interface FallingMoney {
 }
 
 const GameMoneyFalling = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [gameStarted, setGameStarted] = useState(false);
   const [gamePaused, setGamePaused] = useState(false);
   const [score, setScore] = useState(0);
@@ -95,13 +97,30 @@ const GameMoneyFalling = () => {
   };
 
   const handleMoneyTap = async (moneyId: number, value: number) => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "Please log in to play games and earn rewards.",
+      });
+      return;
+    }
+
     if (tapCount >= maxTapsPerHour) {
-      alert('Tap limit reached for this hour. Please try again later.');
+      toast({
+        variant: "destructive",
+        title: "Tap Limit Reached",
+        description: "You've reached your hourly tap limit. Please try again later.",
+      });
       return;
     }
 
     if (sessionEarnings >= dailyCap) {
-      alert('Daily earning cap reached!');
+      toast({
+        variant: "destructive",
+        title: "Daily Cap Reached",
+        description: "You've reached your daily earning cap!",
+      });
       return;
     }
 
@@ -116,8 +135,8 @@ const GameMoneyFalling = () => {
     setSessionEarnings(prev => prev + actualEarning);
     setTapCount(prev => prev + 1);
 
-    // FIXED: Add earnings to wallet immediately
-    if (user && actualEarning > 0) {
+    // Add earnings to wallet immediately
+    if (actualEarning > 0) {
       try {
         // Update wallet earnings
         const { error: walletError } = await supabase.rpc('update_wallet_balance', {
@@ -129,6 +148,12 @@ const GameMoneyFalling = () => {
 
         if (walletError) {
           console.error('Error updating wallet:', walletError);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to update wallet balance.",
+          });
+          return;
         }
 
         // Record game earnings
@@ -145,8 +170,18 @@ const GameMoneyFalling = () => {
         if (gameError) {
           console.error('Error recording game earnings:', gameError);
         }
+
+        toast({
+          title: "Earning Added!",
+          description: `₦${actualEarning} added to your wallet.`,
+        });
       } catch (error) {
         console.error('Error processing earnings:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "An error occurred while processing your earnings.",
+        });
       }
     }
 
@@ -282,9 +317,15 @@ const GameMoneyFalling = () => {
                 <Button
                   onClick={() => setGameStarted(true)}
                   className="w-full gradient-primary text-white text-lg py-3"
+                  disabled={!user}
                 >
-                  Start Game
+                  {user ? 'Start Game' : 'Login Required'}
                 </Button>
+                {!user && (
+                  <p className="text-sm text-red-600 text-center">
+                    Please log in to play games and earn rewards.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
