@@ -112,14 +112,15 @@ const Store = () => {
 
       if (updateError) throw updateError;
 
-      // Record purchase
+      // Record purchase with proper date conversion
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       const { error: purchaseError } = await supabase
         .from('store_purchases')
         .insert({
           user_id: user.id,
           item_id: item.id,
           cost: item.cost,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+          expires_at: expiresAt.toISOString()
         });
 
       if (purchaseError) throw purchaseError;

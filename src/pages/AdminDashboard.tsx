@@ -27,10 +27,10 @@ interface Withdrawal {
   status: string;
   created_at: string;
   profiles: {
-    first_name: string;
-    last_name: string;
-    email: string;
-  };
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+  } | null;
 }
 
 const AdminDashboard = () => {
@@ -129,7 +129,10 @@ const AdminDashboard = () => {
         .limit(50);
 
       if (error) throw error;
-      setWithdrawals(data || []);
+      
+      // Type assertion to handle the query result properly
+      const typedData = data as unknown as Withdrawal[];
+      setWithdrawals(typedData || []);
     } catch (error) {
       console.error('Error fetching withdrawals:', error);
     }

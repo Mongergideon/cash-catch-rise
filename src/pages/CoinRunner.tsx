@@ -16,7 +16,7 @@ const CoinRunner = () => {
   const [playerPosition, setPlayerPosition] = useState(50);
   const [obstacles, setObstacles] = useState<Array<{id: number, x: number, y: number, type: 'coin' | 'obstacle'}>>([]);
   const [sessionEarnings, setSessionEarnings] = useState(0);
-  const gameLoopRef = useRef<number>();
+  const gameLoopRef = useRef<NodeJS.Timeout>();
   const { user } = useAuth();
   const { toast } = useToast();
 
