@@ -17,6 +17,7 @@ import Store from "./pages/Store";
 import Referral from "./pages/Referral";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
+import AdminAuth from "./pages/AdminAuth";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -31,7 +32,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin" element={<AdminAuth />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/" element={<Layout />}>
               <Route index element={<Index />} />
               <Route path="plans" element={<Plans />} />

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Crown, Star, Award, Gem, Zap, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+
+// Declare FlutterwaveCheckout for TypeScript
+declare global {
+  interface Window {
+    FlutterwaveCheckout: (config: any) => void;
+  }
+}
 
 interface Plan {
   id: string;
@@ -103,25 +109,69 @@ const Plans = () => {
     if (!user || !userProfile) return;
 
     if (userProfile.wallet_funding < plan.cost) {
-      toast({
-        variant: "destructive",
-        title: "Insufficient Funds",
-        description: "Please fund your wallet to purchase this plan",
-      });
+      // Use Flutterwave for direct payment if insufficient wallet funds
+      const flutterwaveConfig = {
+        public_key: "FLWPUBK-b816426ded5868e3496fc1e7cba02c85-X", // Your live public key
+        tx_ref: `plan_${plan.id}_${Date.now()}`,
+        amount: plan.cost,
+        currency: "NGN",
+        country: "NG",
+        payment_options: "card,mobilemoney,ussd",
+        customer: {
+          email: user.email || "",
+          phone_number: "",
+          name: `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim(),
+        },
+        customizations: {
+          title: `Purchase ${plan.name} Plan`,
+          description: `Upgrade to ${plan.name} plan`,
+          logo: "",
+        },
+        callback: async (response: any) => {
+          if (response.status === "successful") {
+            await completePlanPurchase(plan);
+          }
+        },
+        onclose: () => {
+          console.log("Payment modal closed");
+        },
+      };
+
+      // Check if FlutterwaveCheckout is available
+      if (typeof window.FlutterwaveCheckout !== 'undefined') {
+        window.FlutterwaveCheckout(flutterwaveConfig);
+      } else {
+        // Fallback: Load Flutterwave script dynamically
+        const script = document.createElement('script');
+        script.src = 'https://checkout.flutterwave.com/v3.js';
+        script.onload = () => {
+          if (window.FlutterwaveCheckout) {
+            window.FlutterwaveCheckout(flutterwaveConfig);
+          }
+        };
+        document.head.appendChild(script);
+      }
       return;
     }
 
+    // Use wallet funds if sufficient
+    await completePlanPurchase(plan);
+  };
+
+  const completePlanPurchase = async (plan: Plan) => {
     setPurchasing(plan.id);
     try {
-      // Update wallet balance
-      const { error: walletError } = await supabase.rpc('update_wallet_balance', {
-        user_uuid: user.id,
-        wallet_type: 'funding',
-        amount: -plan.cost,
-        transaction_description: `Plan purchase: ${plan.name}`
-      });
+      // Update wallet balance only if using wallet funds
+      if (userProfile && userProfile.wallet_funding >= plan.cost) {
+        const { error: walletError } = await supabase.rpc('update_wallet_balance', {
+          user_uuid: user!.id,
+          wallet_type: 'funding',
+          amount: -plan.cost,
+          transaction_description: `Plan purchase: ${plan.name}`
+        });
 
-      if (walletError) throw walletError;
+        if (walletError) throw walletError;
+      }
 
       // Calculate expiry date
       const expiresAt = new Date();
@@ -131,7 +181,7 @@ const Plans = () => {
       const { error: planError } = await supabase
         .from('user_plans')
         .insert({
-          user_id: user.id,
+          user_id: user!.id,
           plan_type: plan.type as any,
           cost: plan.cost,
           expires_at: expiresAt.toISOString()
@@ -146,7 +196,7 @@ const Plans = () => {
           current_plan: plan.type as any,
           plan_expires_at: expiresAt.toISOString()
         })
-        .eq('id', user.id);
+        .eq('id', user!.id);
 
       if (profileError) throw profileError;
 

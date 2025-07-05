@@ -90,12 +90,12 @@ const CoinRunner = () => {
     setSessionEarnings(totalEarnings);
 
     try {
-      // Update wallet balance
+      // FIXED: Update wallet balance immediately
       const { error: walletError } = await supabase.rpc('update_wallet_balance', {
         user_uuid: user.id,
         wallet_type: 'earnings',
         amount: totalEarnings,
-        transaction_description: `Coin Runner game - Coins: ${coins}, Distance: ${distance}`
+        transaction_description: `Coin Runner game - Coins: ${coins}, Distance: ${distance}m`
       });
 
       if (walletError) throw walletError;

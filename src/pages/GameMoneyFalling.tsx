@@ -1,9 +1,11 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Pause, Play, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 interface FallingMoney {
   id: number;
@@ -92,7 +94,7 @@ const GameMoneyFalling = () => {
     );
   };
 
-  const handleMoneyTap = (moneyId: number, value: number) => {
+  const handleMoneyTap = async (moneyId: number, value: number) => {
     if (tapCount >= maxTapsPerHour) {
       alert('Tap limit reached for this hour. Please try again later.');
       return;
@@ -113,6 +115,40 @@ const GameMoneyFalling = () => {
     setScore(prev => prev + actualEarning);
     setSessionEarnings(prev => prev + actualEarning);
     setTapCount(prev => prev + 1);
+
+    // FIXED: Add earnings to wallet immediately
+    if (user && actualEarning > 0) {
+      try {
+        // Update wallet earnings
+        const { error: walletError } = await supabase.rpc('update_wallet_balance', {
+          user_uuid: user.id,
+          wallet_type: 'earnings',
+          amount: actualEarning,
+          transaction_description: `Money Falling Game - Tap reward: ₦${actualEarning}`
+        });
+
+        if (walletError) {
+          console.error('Error updating wallet:', walletError);
+        }
+
+        // Record game earnings
+        const { error: gameError } = await supabase
+          .from('game_earnings')
+          .insert({
+            user_id: user.id,
+            game_type: 'money_falling',
+            amount: actualEarning,
+            taps_count: 1,
+            session_duration: Math.floor(Date.now() / 1000)
+          });
+
+        if (gameError) {
+          console.error('Error recording game earnings:', gameError);
+        }
+      } catch (error) {
+        console.error('Error processing earnings:', error);
+      }
+    }
 
     // Add bounce effect
     const element = document.getElementById(`money-${moneyId}`);

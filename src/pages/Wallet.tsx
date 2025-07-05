@@ -105,9 +105,9 @@ const Wallet = () => {
     }
 
     try {
-      // Initialize Flutterwave payment
+      // Initialize Flutterwave payment with LIVE credentials
       const flutterwaveConfig = {
-        public_key: "FLWPUBK_TEST-SANDBOXDEMOKEY-X", // Replace with your public key
+        public_key: "FLWPUBK-b816426ded5868e3496fc1e7cba02c85-X", // Your live public key
         tx_ref: `fund_${Date.now()}`,
         amount: amount,
         currency: "NGN",

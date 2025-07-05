@@ -1,14 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Wallet, TrendingUp, AlertCircle, Check, X } from 'lucide-react';
+import { Users, Wallet, TrendingUp, AlertCircle, Check, X, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardStats {
   totalUsers: number;
@@ -45,17 +45,23 @@ const AdminDashboard = () => {
   const [processing, setProcessing] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
       checkAdminAccess();
-      fetchDashboardData();
-      fetchWithdrawals();
+    } else {
+      navigate('/admin');
     }
-  }, [user]);
+  }, [user, navigate]);
 
   const checkAdminAccess = async () => {
-    if (!user) return;
+    if (!user) {
+      navigate('/admin');
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -70,11 +76,24 @@ const AdminDashboard = () => {
           title: "Access Denied",
           description: "You don't have admin access",
         });
+        navigate('/admin');
         return;
       }
+
+      setIsAdmin(true);
+      fetchDashboardData();
+      fetchWithdrawals();
     } catch (error) {
       console.error('Error checking admin access:', error);
+      navigate('/admin');
+    } finally {
+      setCheckingAuth(false);
     }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/admin');
   };
 
   const fetchDashboardData = async () => {
@@ -174,19 +193,33 @@ const AdminDashboard = () => {
     }
   };
 
-  if (loading) {
+  if (checkingAuth) {
     return (
       <div className="p-8 text-center">
-        <p>Loading admin dashboard...</p>
+        <p>Verifying admin access...</p>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="p-8 text-center">
+        <p>Access denied. Redirecting...</p>
       </div>
     );
   }
 
   return (
     <div className="p-6 space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-600 mt-2">Cash Catch Rise Administration</p>
+      <div className="flex items-center justify-between">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="text-gray-600 mt-2">Cash Catch Rise Administration</p>
+        </div>
+        <Button onClick={handleSignOut} variant="outline">
+          <LogOut className="h-4 w-4 mr-2" />
+          Sign Out
+        </Button>
       </div>
 
       {/* Stats Cards */}

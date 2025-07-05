@@ -115,7 +115,7 @@ const MemoryFlip = () => {
 
     if (totalEarnings > 0) {
       try {
-        // Update wallet balance
+        // FIXED: Update wallet balance immediately
         const { error: walletError } = await supabase.rpc('update_wallet_balance', {
           user_uuid: user.id,
           wallet_type: 'earnings',
