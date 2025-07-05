@@ -1,99 +1,189 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Crown, Star, Award, Gem, Zap, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+
+interface Plan {
+  id: string;
+  name: string;
+  cost: number;
+  max_daily_earnings: number;
+  duration_days: number;
+  can_withdraw: boolean;
+  type: string;
+}
+
+interface UserProfile {
+  current_plan: string;
+  plan_expires_at: string | null;
+  wallet_funding: number;
+}
 
 const Plans = () => {
-  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const plans = [
-    {
-      id: 'free',
-      name: 'Free Trial',
-      cost: 0,
-      maxDaily: 3000,
-      duration: 'Unlimited',
-      canWithdraw: false,
-      icon: Star,
-      color: 'text-gray-500',
-      bgColor: 'bg-gray-50',
-      features: ['Basic games access', 'Daily earning cap: ₦3,000', 'No withdrawal rights', 'Unlimited duration'],
-      popular: false
-    },
-    {
-      id: 'starter',
-      name: 'Starter',
-      cost: 5000,
-      maxDaily: 8000,
-      duration: '30 days',
-      canWithdraw: true,
-      icon: Zap,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-50',
-      features: ['All games access', 'Daily earning cap: ₦8,000', 'Weekly withdrawals', '30 days duration'],
-      popular: false
-    },
-    {
-      id: 'bronze',
-      name: 'Bronze',
-      cost: 10000,
-      maxDaily: 20000,
-      duration: '30 days',
-      canWithdraw: true,
-      icon: Award,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      features: ['All games access', 'Daily earning cap: ₦20,000', 'Weekly withdrawals', '30 days duration'],
-      popular: true
-    },
-    {
-      id: 'silver',
-      name: 'Silver',
-      cost: 20000,
-      maxDaily: 40000,
-      duration: '30 days',
-      canWithdraw: true,
-      icon: Star,
-      color: 'text-gray-500',
-      bgColor: 'bg-gray-50',
-      features: ['All games access', 'Daily earning cap: ₦40,000', 'Weekly withdrawals', '30 days duration'],
-      popular: false
-    },
-    {
-      id: 'gold',
-      name: 'Gold',
-      cost: 50000,
-      maxDaily: 100000,
-      duration: '30 days',
-      canWithdraw: true,
-      icon: Crown,
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-50',
-      features: ['All games access', 'Daily earning cap: ₦100,000', 'Weekly withdrawals', '30 days duration'],
-      popular: false
-    },
-    {
-      id: 'platinum',
-      name: 'Platinum',
-      cost: 100000,
-      maxDaily: 200000,
-      duration: '30 days',
-      canWithdraw: true,
-      icon: Gem,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-50',
-      features: ['All games access', 'Daily earning cap: ₦200,000', 'Weekly withdrawals', '30 days duration', 'Premium support'],
-      popular: false
+  const getIconForPlan = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'starter': return Zap;
+      case 'bronze': return Award;
+      case 'silver': return Star;
+      case 'gold': return Crown;
+      case 'platinum': return Gem;
+      default: return Star;
     }
-  ];
-
-  const handlePlanSelect = (planId) => {
-    setSelectedPlan(planId);
-    // TODO: Implement plan purchase logic
-    console.log('Selected plan:', planId);
   };
+
+  const getColorForPlan = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'starter': return 'text-blue-500';
+      case 'bronze': return 'text-orange-600';
+      case 'silver': return 'text-gray-500';
+      case 'gold': return 'text-yellow-500';
+      case 'platinum': return 'text-purple-500';
+      default: return 'text-gray-500';
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchPlans();
+      fetchUserProfile();
+    }
+  }, [user]);
+
+  const fetchPlans = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('is_active', true)
+        .order('cost');
+
+      if (error) throw error;
+      setPlans(data || []);
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load plans",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('current_plan, plan_expires_at, wallet_funding')
+        .eq('id', user?.id)
+        .single();
+
+      if (error) throw error;
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const handlePlanPurchase = async (plan: Plan) => {
+    if (!user || !userProfile) return;
+
+    if (userProfile.wallet_funding < plan.cost) {
+      toast({
+        variant: "destructive",
+        title: "Insufficient Funds",
+        description: "Please fund your wallet to purchase this plan",
+      });
+      return;
+    }
+
+    setPurchasing(plan.id);
+    try {
+      // Update wallet balance
+      const { error: walletError } = await supabase.rpc('update_wallet_balance', {
+        user_uuid: user.id,
+        wallet_type: 'funding',
+        amount: -plan.cost,
+        transaction_description: `Plan purchase: ${plan.name}`
+      });
+
+      if (walletError) throw walletError;
+
+      // Calculate expiry date
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + plan.duration_days);
+
+      // Insert user plan
+      const { error: planError } = await supabase
+        .from('user_plans')
+        .insert({
+          user_id: user.id,
+          plan_type: plan.type as any,
+          cost: plan.cost,
+          expires_at: expiresAt.toISOString()
+        });
+
+      if (planError) throw planError;
+
+      // Update user profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          current_plan: plan.type as any,
+          plan_expires_at: expiresAt.toISOString()
+        })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: "Plan Purchased Successfully!",
+        description: `You've upgraded to ${plan.name}`,
+      });
+
+      // Refresh user profile
+      fetchUserProfile();
+    } catch (error) {
+      console.error('Error purchasing plan:', error);
+      toast({
+        variant: "destructive",
+        title: "Purchase Failed",
+        description: "Failed to purchase plan. Please try again.",
+      });
+    } finally {
+      setPurchasing(null);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="p-8 text-center">
+        <p>Please login to view plans.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center">
+        <p>Loading plans...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -106,77 +196,101 @@ const Plans = () => {
       </div>
 
       {/* Current Plan Alert */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="p-4">
-          <div className="flex items-center space-x-3">
-            <CheckCircle className="text-blue-500" size={20} />
-            <div>
-              <p className="font-semibold text-blue-900">Current Plan: Free Trial</p>
-              <p className="text-sm text-blue-700">Daily earning cap: ₦3,000 • No withdrawal rights</p>
+      {userProfile && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <CheckCircle className="text-blue-500" size={20} />
+              <div>
+                <p className="font-semibold text-blue-900">
+                  Current Plan: {userProfile.current_plan?.replace('_', ' ').toUpperCase() || 'FREE TRIAL'}
+                </p>
+                <p className="text-sm text-blue-700">
+                  {userProfile.plan_expires_at 
+                    ? `Expires: ${new Date(userProfile.plan_expires_at).toLocaleDateString()}`
+                    : 'No expiry date'
+                  }
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {plans.map((plan) => {
-          const IconComponent = plan.icon;
+          const IconComponent = getIconForPlan(plan.type);
+          const isCurrentPlan = userProfile?.current_plan === plan.type;
+          const isPopular = plan.type === 'bronze';
+          
           return (
             <Card 
               key={plan.id} 
               className={`relative bg-white shadow-lg hover:shadow-xl transition-all cursor-pointer ${
                 selectedPlan === plan.id ? 'ring-2 ring-primary' : ''
-              } ${plan.popular ? 'border-2 border-primary' : ''}`}
+              } ${isPopular ? 'border-2 border-primary' : ''}`}
             >
-              {plan.popular && (
+              {isPopular && (
                 <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-primary text-white">
                   Most Popular
                 </Badge>
               )}
               
-              <CardHeader className={`text-center ${plan.bgColor} rounded-t-lg`}>
+              <CardHeader className="text-center bg-gray-50 rounded-t-lg">
                 <div className="flex justify-center mb-2">
-                  <IconComponent className={plan.color} size={32} />
+                  <IconComponent className={getColorForPlan(plan.type)} size={32} />
                 </div>
                 <CardTitle className="text-xl font-bold">{plan.name}</CardTitle>
                 <div className="space-y-1">
                   <p className="text-3xl font-bold text-gray-900">
-                    {plan.cost === 0 ? 'Free' : `₦${plan.cost.toLocaleString()}`}
+                    ₦{plan.cost.toLocaleString()}
                   </p>
-                  <p className="text-sm text-gray-600">{plan.duration}</p>
+                  <p className="text-sm text-gray-600">{plan.duration_days} days</p>
                 </div>
               </CardHeader>
               
               <CardContent className="p-6 space-y-4">
                 <div className="text-center">
                   <p className="text-lg font-semibold text-gray-900">
-                    Daily Cap: ₦{plan.maxDaily.toLocaleString()}
+                    Daily Cap: ₦{plan.max_daily_earnings.toLocaleString()}
                   </p>
                   <p className="text-sm text-gray-600">
-                    {plan.canWithdraw ? 'Weekly withdrawals allowed' : 'No withdrawal rights'}
+                    {plan.can_withdraw ? 'Withdrawal allowed' : 'No withdrawal rights'}
                   </p>
                 </div>
                 
                 <ul className="space-y-2">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-center space-x-2">
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle className="text-green-500" size={16} />
+                    <span className="text-sm text-gray-700">All games access</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle className="text-green-500" size={16} />
+                    <span className="text-sm text-gray-700">Daily earning cap: ₦{plan.max_daily_earnings.toLocaleString()}</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle className="text-green-500" size={16} />
+                    <span className="text-sm text-gray-700">{plan.duration_days} days duration</span>
+                  </li>
+                  {plan.can_withdraw && (
+                    <li className="flex items-center space-x-2">
                       <CheckCircle className="text-green-500" size={16} />
-                      <span className="text-sm text-gray-700">{feature}</span>
+                      <span className="text-sm text-gray-700">Weekly withdrawals</span>
                     </li>
-                  ))}
+                  )}
                 </ul>
                 
                 <Button
-                  onClick={() => handlePlanSelect(plan.id)}
+                  onClick={() => handlePlanPurchase(plan)}
+                  disabled={purchasing === plan.id || isCurrentPlan || (userProfile?.wallet_funding || 0) < plan.cost}
                   className={`w-full ${
-                    plan.id === 'free' 
+                    isCurrentPlan 
                       ? 'bg-gray-500 hover:bg-gray-600' 
                       : 'gradient-primary hover:opacity-90'
                   } text-white`}
-                  disabled={plan.id === 'free'}
                 >
-                  {plan.id === 'free' ? 'Current Plan' : 'Select Plan'}
+                  {purchasing === plan.id ? 'Purchasing...' : isCurrentPlan ? 'Current Plan' : 'Purchase Plan'}
                 </Button>
               </CardContent>
             </Card>
@@ -184,56 +298,15 @@ const Plans = () => {
         })}
       </div>
 
-      {/* Plan Comparison */}
-      <Card className="bg-white shadow-lg">
-        <CardHeader>
-          <CardTitle>Plan Benefits Comparison</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Feature</th>
-                  <th className="text-center py-2">Free</th>
-                  <th className="text-center py-2">Starter</th>
-                  <th className="text-center py-2">Bronze</th>
-                  <th className="text-center py-2">Silver</th>
-                  <th className="text-center py-2">Gold</th>
-                  <th className="text-center py-2">Platinum</th>
-                </tr>
-              </thead>
-              <tbody className="text-center">
-                <tr className="border-b">
-                  <td className="text-left py-2 font-medium">Daily Earning Cap</td>
-                  <td className="py-2">₦3,000</td>
-                  <td className="py-2">₦8,000</td>
-                  <td className="py-2">₦20,000</td>
-                  <td className="py-2">₦40,000</td>
-                  <td className="py-2">₦100,000</td>
-                  <td className="py-2">₦200,000</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="text-left py-2 font-medium">Withdrawal Rights</td>
-                  <td className="py-2 text-red-500">❌</td>
-                  <td className="py-2 text-green-500">✅</td>
-                  <td className="py-2 text-green-500">✅</td>
-                  <td className="py-2 text-green-500">✅</td>
-                  <td className="py-2 text-green-500">✅</td>
-                  <td className="py-2 text-green-500">✅</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="text-left py-2 font-medium">Plan Duration</td>
-                  <td className="py-2">Unlimited</td>
-                  <td className="py-2">30 days</td>
-                  <td className="py-2">30 days</td>
-                  <td className="py-2">30 days</td>
-                  <td className="py-2">30 days</td>
-                  <td className="py-2">30 days</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+      {/* Wallet Balance */}
+      <Card className="bg-green-50 border-green-200">
+        <CardContent className="p-4 text-center">
+          <p className="text-green-900 font-semibold">
+            Funding Wallet Balance: ₦{userProfile?.wallet_funding?.toLocaleString() || '0'}
+          </p>
+          <p className="text-sm text-green-700">
+            Need more funds? Visit the Wallet page to add money.
+          </p>
         </CardContent>
       </Card>
     </div>
