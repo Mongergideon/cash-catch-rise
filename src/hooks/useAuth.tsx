@@ -31,29 +31,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
 
         // Handle referral rewards when user signs up
-        if (event === 'SIGNED_UP' && session?.user) {
-          setTimeout(async () => {
-            try {
-              const { data: profileData } = await supabase
-                .from('profiles')
-                .select('referred_by')
-                .eq('id', session.user.id)
-                .single();
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Check if this is a new user by looking at their metadata
+          const isNewUser = session.user.email_confirmed_at && 
+            new Date(session.user.email_confirmed_at).getTime() > (Date.now() - 60000); // Within last minute
+          
+          if (isNewUser) {
+            setTimeout(async () => {
+              try {
+                const { data: profileData } = await supabase
+                  .from('profiles')
+                  .select('referred_by')
+                  .eq('id', session.user.id)
+                  .single();
 
-              if (profileData?.referred_by) {
-                // Create referral record
-                await supabase
-                  .from('referrals')
-                  .insert({
-                    referrer_id: profileData.referred_by,
-                    referred_id: session.user.id,
-                    reward_amount: 500.00
-                  });
+                if (profileData?.referred_by) {
+                  // Create referral record
+                  await supabase
+                    .from('referrals')
+                    .insert({
+                      referrer_id: profileData.referred_by,
+                      referred_id: session.user.id,
+                      reward_amount: 500.00
+                    });
+                }
+              } catch (error) {
+                console.error('Error handling referral:', error);
               }
-            } catch (error) {
-              console.error('Error handling referral:', error);
-            }
-          }, 1000);
+            }, 1000);
+          }
         }
       }
     );
