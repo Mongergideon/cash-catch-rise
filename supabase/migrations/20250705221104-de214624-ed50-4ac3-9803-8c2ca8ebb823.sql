@@ -227,13 +227,18 @@ CREATE POLICY "Anyone can view store items" ON public.store_items FOR SELECT USI
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, first_name, last_name, referral_code)
+  INSERT INTO public.profiles (id, email, first_name, last_name, referral_code, referred_by)
   VALUES (
     NEW.id,
     NEW.email,
     NEW.raw_user_meta_data->>'first_name',
     NEW.raw_user_meta_data->>'last_name',
-    UPPER(SUBSTRING(MD5(NEW.id::text) FROM 1 FOR 8))
+    UPPER(SUBSTRING(MD5(NEW.id::text) FROM 1 FOR 8)),
+    CASE 
+      WHEN NEW.raw_user_meta_data->>'referred_by' IS NOT NULL 
+      THEN (NEW.raw_user_meta_data->>'referred_by')::UUID
+      ELSE NULL
+    END
   );
   RETURN NEW;
 END;
@@ -283,3 +288,59 @@ BEGIN
   RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to check and issue referral rewards
+CREATE OR REPLACE FUNCTION public.check_referral_rewards()
+RETURNS TRIGGER AS $$
+DECLARE
+  referrer_record RECORD;
+BEGIN
+  -- Check if this is a game earning that crosses the 5000 threshold
+  IF NEW.type = 'game_earning' THEN
+    -- Get user's total earnings
+    SELECT SUM(amount) as total_earnings INTO referrer_record
+    FROM public.transactions 
+    WHERE user_id = NEW.user_id AND type = 'game_earning';
+    
+    -- Check if user just crossed 5000 and has a referrer
+    IF referrer_record.total_earnings >= 5000 THEN
+      -- Get user's referrer info
+      SELECT r.referrer_id, r.reward_issued INTO referrer_record
+      FROM public.referrals r
+      WHERE r.referred_id = NEW.user_id AND r.reward_issued = FALSE
+      LIMIT 1;
+      
+      -- Issue reward if referrer exists and reward not yet issued
+      IF FOUND THEN
+        -- Add reward to referrer's earnings wallet
+        UPDATE public.profiles 
+        SET wallet_earnings = wallet_earnings + 500.00,
+            updated_at = NOW()
+        WHERE id = referrer_record.referrer_id;
+        
+        -- Mark reward as issued
+        UPDATE public.referrals 
+        SET reward_issued = TRUE,
+            reward_issued_at = NOW()
+        WHERE referrer_id = referrer_record.referrer_id AND referred_id = NEW.user_id;
+        
+        -- Log the referral reward transaction
+        INSERT INTO public.transactions (user_id, type, amount, description)
+        VALUES (
+          referrer_record.referrer_id,
+          'referral_earning'::transaction_type,
+          500.00,
+          'Referral reward - referred user earned ₦5,000+'
+        );
+      END IF;
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create trigger for referral rewards
+CREATE TRIGGER check_referral_rewards_trigger
+  AFTER INSERT ON public.transactions
+  FOR EACH ROW EXECUTE FUNCTION public.check_referral_rewards();

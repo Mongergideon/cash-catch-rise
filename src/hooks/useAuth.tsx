@@ -29,6 +29,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       async (event, session) => {
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Handle referral rewards when user signs up
+        if (event === 'SIGNED_UP' && session?.user) {
+          setTimeout(async () => {
+            try {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('referred_by')
+                .eq('id', session.user.id)
+                .single();
+
+              if (profileData?.referred_by) {
+                // Create referral record
+                await supabase
+                  .from('referrals')
+                  .insert({
+                    referrer_id: profileData.referred_by,
+                    referred_id: session.user.id,
+                    reward_amount: 500.00
+                  });
+              }
+            } catch (error) {
+              console.error('Error handling referral:', error);
+            }
+          }, 1000);
+        }
       }
     );
 
@@ -44,10 +70,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, userData?: any) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: redirectUrl,
         data: userData,
       },
     });

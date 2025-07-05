@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,6 +15,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
@@ -46,10 +48,40 @@ const Auth = () => {
           navigate('/');
         }
       } else {
+        // Handle referral logic during sign up
+        let referredById = null;
+        if (referralCode.trim()) {
+          try {
+            const { data: referrerData, error: referrerError } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('referral_code', referralCode.trim().toUpperCase())
+              .maybeSingle();
+
+            if (referrerError) {
+              console.error('Error checking referral code:', referrerError);
+            } else if (referrerData) {
+              referredById = referrerData.id;
+            } else {
+              toast({
+                variant: "destructive",
+                title: "Invalid Referral Code",
+                description: "The referral code you entered is not valid.",
+              });
+              setLoading(false);
+              return;
+            }
+          } catch (error) {
+            console.error('Error validating referral:', error);
+          }
+        }
+
         const { error } = await signUp(email, password, {
           first_name: firstName,
           last_name: lastName,
+          referred_by: referredById,
         });
+
         if (error) {
           toast({
             variant: "destructive",
@@ -111,6 +143,19 @@ const Auth = () => {
                     onChange={(e) => setLastName(e.target.value)}
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="referralCode">Referral Code (Optional)</Label>
+                  <Input
+                    id="referralCode"
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    placeholder="Enter referral code if you have one"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Have a referral code? Enter it to get started with a bonus!
+                  </p>
                 </div>
               </>
             )}

@@ -1,10 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Wallet, TrendingUp, AlertCircle, Check, X, LogOut } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Users, Wallet, TrendingUp, AlertCircle, Check, X, LogOut, Edit, Ban, UserPlus, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +19,20 @@ interface DashboardStats {
   totalEarnings: number;
   totalFunding: number;
   pendingWithdrawals: number;
+}
+
+interface UserProfile {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  wallet_earnings: number;
+  wallet_funding: number;
+  current_plan: string;
+  plan_expires_at: string;
+  is_banned: boolean;
+  created_at: string;
+  referral_code: string;
 }
 
 interface Withdrawal {
@@ -33,6 +51,19 @@ interface Withdrawal {
   } | null;
 }
 
+interface Transaction {
+  id: string;
+  type: string;
+  amount: number;
+  description: string;
+  created_at: string;
+  profiles: {
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+  } | null;
+}
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
@@ -40,9 +71,14 @@ const AdminDashboard = () => {
     totalFunding: 0,
     pendingWithdrawals: 0
   });
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [walletAmount, setWalletAmount] = useState('');
+  const [walletType, setWalletType] = useState<'funding' | 'earnings'>('funding');
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -82,7 +118,9 @@ const AdminDashboard = () => {
 
       setIsAdmin(true);
       fetchDashboardData();
+      fetchUsers();
       fetchWithdrawals();
+      fetchTransactions();
     } catch (error) {
       console.error('Error checking admin access:', error);
       navigate('/admin');
@@ -136,6 +174,20 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
   const fetchWithdrawals = async () => {
     try {
       const { data, error } = await supabase
@@ -149,11 +201,30 @@ const AdminDashboard = () => {
 
       if (error) throw error;
       
-      // Type assertion to handle the query result properly
       const typedData = data as unknown as Withdrawal[];
       setWithdrawals(typedData || []);
     } catch (error) {
       console.error('Error fetching withdrawals:', error);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          profiles(first_name, last_name, email)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      
+      const typedData = data as unknown as Transaction[];
+      setTransactions(typedData || []);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
     }
   };
 
@@ -190,6 +261,73 @@ const AdminDashboard = () => {
       });
     } finally {
       setProcessing(null);
+    }
+  };
+
+  const updateUserWallet = async () => {
+    if (!selectedUser || !walletAmount) return;
+
+    const amount = parseFloat(walletAmount);
+    if (isNaN(amount)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Amount",
+        description: "Please enter a valid number",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.rpc('update_wallet_balance', {
+        user_uuid: selectedUser.id,
+        wallet_type: walletType,
+        amount: amount,
+        transaction_description: `Admin ${amount > 0 ? 'credit' : 'debit'} - ${walletType} wallet`
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `User wallet updated successfully`,
+      });
+
+      setWalletAmount('');
+      setSelectedUser(null);
+      fetchUsers();
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Error updating wallet:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update wallet",
+      });
+    }
+  };
+
+  const banUser = async (userId: string, banned: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_banned: banned })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `User ${banned ? 'banned' : 'unbanned'} successfully`,
+      });
+
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user ban status:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update user status",
+      });
     }
   };
 
@@ -266,12 +404,111 @@ const AdminDashboard = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="withdrawals" className="space-y-4">
+      <Tabs defaultValue="users" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="users">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Earnings</TableHead>
+                    <TableHead>Funding</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">
+                            {user.first_name} {user.last_name}
+                          </p>
+                          <p className="text-sm text-gray-600">{user.email}</p>
+                          <p className="text-xs text-gray-500">ID: {user.referral_code}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{user.current_plan}</Badge>
+                      </TableCell>
+                      <TableCell>₦{user.wallet_earnings?.toLocaleString() || 0}</TableCell>
+                      <TableCell>₦{user.wallet_funding?.toLocaleString() || 0}</TableCell>
+                      <TableCell>
+                        <Badge variant={user.is_banned ? 'destructive' : 'default'}>
+                          {user.is_banned ? 'Banned' : 'Active'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSelectedUser(user)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Update User Wallet</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label>Wallet Type</Label>
+                                  <select
+                                    value={walletType}
+                                    onChange={(e) => setWalletType(e.target.value as 'funding' | 'earnings')}
+                                    className="w-full p-2 border rounded"
+                                  >
+                                    <option value="funding">Funding</option>
+                                    <option value="earnings">Earnings</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <Label>Amount (use negative for debit)</Label>
+                                  <Input
+                                    type="number"
+                                    value={walletAmount}
+                                    onChange={(e) => setWalletAmount(e.target.value)}
+                                    placeholder="Enter amount"
+                                  />
+                                </div>
+                                <Button onClick={updateUserWallet} className="w-full">
+                                  Update Wallet
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          <Button
+                            size="sm"
+                            variant={user.is_banned ? "default" : "destructive"}
+                            onClick={() => banUser(user.id, !user.is_banned)}
+                          >
+                            {user.is_banned ? <UserPlus className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="withdrawals">
           <Card>
@@ -358,28 +595,45 @@ const AdminDashboard = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="users">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-center text-gray-500 py-8">
-                User management features coming soon...
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="transactions">
           <Card>
             <CardHeader>
               <CardTitle>Transaction History</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-center text-gray-500 py-8">
-                Transaction history features coming soon...
-              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transactions.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">
+                            {transaction.profiles?.first_name} {transaction.profiles?.last_name}
+                          </p>
+                          <p className="text-sm text-gray-600">{transaction.profiles?.email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{transaction.type}</Badge>
+                      </TableCell>
+                      <TableCell>₦{transaction.amount.toLocaleString()}</TableCell>
+                      <TableCell>{transaction.description}</TableCell>
+                      <TableCell>
+                        {new Date(transaction.created_at).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
