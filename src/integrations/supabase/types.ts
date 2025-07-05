@@ -9,16 +9,539 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      admins: {
+        Row: {
+          created_at: string | null
+          id: string
+          permissions: Json | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          permissions?: Json | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          permissions?: Json | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_bonus: {
+        Row: {
+          amount: number
+          claimed_at: string | null
+          date: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          claimed_at?: string | null
+          date?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          claimed_at?: string | null
+          date?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_bonus_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_earnings: {
+        Row: {
+          bonus_earnings: number | null
+          created_at: string | null
+          date: string
+          game_earnings: number | null
+          id: string
+          referral_earnings: number | null
+          total_earned: number | null
+          user_id: string
+        }
+        Insert: {
+          bonus_earnings?: number | null
+          created_at?: string | null
+          date?: string
+          game_earnings?: number | null
+          id?: string
+          referral_earnings?: number | null
+          total_earned?: number | null
+          user_id: string
+        }
+        Update: {
+          bonus_earnings?: number | null
+          created_at?: string | null
+          date?: string
+          game_earnings?: number | null
+          id?: string
+          referral_earnings?: number | null
+          total_earned?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_earnings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_earnings: {
+        Row: {
+          amount: number
+          created_at: string | null
+          game_type: Database["public"]["Enums"]["game_type"]
+          id: string
+          session_duration: number | null
+          taps_count: number | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          game_type: Database["public"]["Enums"]["game_type"]
+          id?: string
+          session_duration?: number | null
+          taps_count?: number | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          game_type?: Database["public"]["Enums"]["game_type"]
+          id?: string
+          session_duration?: number | null
+          taps_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_earnings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          can_withdraw: boolean
+          cost: number
+          created_at: string | null
+          duration_days: number
+          id: string
+          is_active: boolean | null
+          max_daily_earnings: number
+          name: string
+          type: Database["public"]["Enums"]["plan_type"]
+        }
+        Insert: {
+          can_withdraw: boolean
+          cost: number
+          created_at?: string | null
+          duration_days: number
+          id?: string
+          is_active?: boolean | null
+          max_daily_earnings: number
+          name: string
+          type: Database["public"]["Enums"]["plan_type"]
+        }
+        Update: {
+          can_withdraw?: boolean
+          cost?: number
+          created_at?: string | null
+          duration_days?: number
+          id?: string
+          is_active?: boolean | null
+          max_daily_earnings?: number
+          name?: string
+          type?: Database["public"]["Enums"]["plan_type"]
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          current_plan: Database["public"]["Enums"]["plan_type"] | null
+          email: string | null
+          first_name: string | null
+          id: string
+          is_banned: boolean | null
+          last_name: string | null
+          next_withdraw_at: string | null
+          phone: string | null
+          plan_expires_at: string | null
+          referral_code: string | null
+          referred_by: string | null
+          updated_at: string | null
+          wallet_earnings: number | null
+          wallet_funding: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_plan?: Database["public"]["Enums"]["plan_type"] | null
+          email?: string | null
+          first_name?: string | null
+          id: string
+          is_banned?: boolean | null
+          last_name?: string | null
+          next_withdraw_at?: string | null
+          phone?: string | null
+          plan_expires_at?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
+          updated_at?: string | null
+          wallet_earnings?: number | null
+          wallet_funding?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          current_plan?: Database["public"]["Enums"]["plan_type"] | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          is_banned?: boolean | null
+          last_name?: string | null
+          next_withdraw_at?: string | null
+          phone?: string | null
+          plan_expires_at?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
+          updated_at?: string | null
+          wallet_earnings?: number | null
+          wallet_funding?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          created_at: string | null
+          id: string
+          referred_id: string
+          referrer_id: string
+          reward_amount: number | null
+          reward_issued: boolean | null
+          reward_issued_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          referred_id: string
+          referrer_id: string
+          reward_amount?: number | null
+          reward_issued?: boolean | null
+          reward_issued_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          referred_id?: string
+          referrer_id?: string
+          reward_amount?: number | null
+          reward_issued?: boolean | null
+          reward_issued_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_items: {
+        Row: {
+          cost: number
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          type: string
+        }
+        Insert: {
+          cost: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          type: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      store_purchases: {
+        Row: {
+          cost: number
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          item_id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cost: number
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          item_id: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          item_id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_purchases_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "store_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          reference_id: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          type?: Database["public"]["Enums"]["transaction_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_plans: {
+        Row: {
+          cost: number
+          expires_at: string
+          id: string
+          is_active: boolean | null
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          started_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cost: number
+          expires_at: string
+          id?: string
+          is_active?: boolean | null
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          started_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cost?: number
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          plan_type?: Database["public"]["Enums"]["plan_type"]
+          started_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      withdrawals: {
+        Row: {
+          account_name: string
+          account_number: string
+          admin_notes: string | null
+          amount: number
+          bank_name: string
+          created_at: string | null
+          fee: number
+          id: string
+          processed_at: string | null
+          processed_by: string | null
+          status: Database["public"]["Enums"]["withdrawal_status"] | null
+          user_id: string
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          admin_notes?: string | null
+          amount: number
+          bank_name: string
+          created_at?: string | null
+          fee?: number
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: Database["public"]["Enums"]["withdrawal_status"] | null
+          user_id: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          admin_notes?: string | null
+          amount?: number
+          bank_name?: string
+          created_at?: string | null
+          fee?: number
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: Database["public"]["Enums"]["withdrawal_status"] | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawals_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "withdrawals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_wallet_balance: {
+        Args: {
+          user_uuid: string
+          wallet_type: string
+          amount: number
+          transaction_description?: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      game_type: "money_falling" | "coin_runner" | "spin_wheel" | "memory_flip"
+      plan_type:
+        | "free_trial"
+        | "starter"
+        | "bronze"
+        | "silver"
+        | "gold"
+        | "platinum"
+      transaction_type:
+        | "wallet_fund"
+        | "plan_purchase"
+        | "store_purchase"
+        | "game_earning"
+        | "referral_earning"
+        | "daily_bonus"
+        | "withdrawal_fee"
+      withdrawal_status: "pending" | "approved" | "rejected" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +656,26 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      game_type: ["money_falling", "coin_runner", "spin_wheel", "memory_flip"],
+      plan_type: [
+        "free_trial",
+        "starter",
+        "bronze",
+        "silver",
+        "gold",
+        "platinum",
+      ],
+      transaction_type: [
+        "wallet_fund",
+        "plan_purchase",
+        "store_purchase",
+        "game_earning",
+        "referral_earning",
+        "daily_bonus",
+        "withdrawal_fee",
+      ],
+      withdrawal_status: ["pending", "approved", "rejected", "completed"],
+    },
   },
 } as const

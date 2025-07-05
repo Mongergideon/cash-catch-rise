@@ -22,8 +22,8 @@ const GameMoneyFalling = () => {
   const [fallingMoney, setFallingMoney] = useState<FallingMoney[]>([]);
   const [tapCount, setTapCount] = useState(0);
   const gameAreaRef = useRef<HTMLDivElement>(null);
-  const gameLoopRef = useRef<number>();
-  const spawnIntervalRef = useRef<number>();
+  const gameLoopRef = useRef<NodeJS.Timeout>();
+  const spawnIntervalRef = useRef<NodeJS.Timeout>();
 
   const moneyValues = [10, 20, 50, 100, 200, 500];
   const maxTapsPerHour = 500;
