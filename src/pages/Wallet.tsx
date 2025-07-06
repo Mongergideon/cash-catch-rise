@@ -71,6 +71,7 @@ const Wallet = () => {
   const [canWithdraw, setCanWithdraw] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successWithdrawal, setSuccessWithdrawal] = useState<any>(null);
+  const [lastWithdrawal, setLastWithdrawal] = useState<Withdrawal | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -142,6 +143,11 @@ const Wallet = () => {
 
       if (error) throw error;
       setWithdrawals(data || []);
+      
+      // Set the most recent withdrawal for display
+      if (data && data.length > 0) {
+        setLastWithdrawal(data[0]);
+      }
     } catch (error) {
       console.error('Error fetching withdrawals:', error);
     }
@@ -267,6 +273,26 @@ const Wallet = () => {
     }
 
     try {
+      // CRITICAL FIX: Deduct withdrawal amount from earnings wallet IMMEDIATELY
+      const { error: earningsError } = await supabase.rpc('update_wallet_balance', {
+        user_uuid: user?.id,
+        wallet_type: 'earnings',
+        amount: -amount,
+        transaction_description: `Withdrawal request - ₦${amount.toLocaleString()}`
+      });
+
+      if (earningsError) throw earningsError;
+
+      // Deduct fee from funding wallet
+      const { error: feeError } = await supabase.rpc('update_wallet_balance', {
+        user_uuid: user?.id,
+        wallet_type: 'funding',
+        amount: -500,
+        transaction_description: 'Withdrawal fee'
+      });
+
+      if (feeError) throw feeError;
+
       // Create withdrawal request
       const { data: withdrawal, error } = await supabase
         .from('withdrawals')
@@ -284,14 +310,6 @@ const Wallet = () => {
 
       if (error) throw error;
 
-      // Deduct fee from funding wallet only
-      await supabase.rpc('update_wallet_balance', {
-        user_uuid: user?.id,
-        wallet_type: 'funding',
-        amount: -500,
-        transaction_description: 'Withdrawal fee'
-      });
-
       // Update next withdrawal time
       await supabase.rpc('update_next_withdrawal_time', {
         user_uuid: user?.id
@@ -308,7 +326,7 @@ const Wallet = () => {
       setWithdrawalDialog(false);
       setWithdrawalAmount('');
       setBankDetails({ account_name: '', account_number: '', bank_name: '' });
-      fetchWalletData();
+      fetchWalletData(); // Refresh balances immediately
       fetchTransactions();
       fetchWithdrawals();
       checkWithdrawalEligibility();
@@ -446,6 +464,24 @@ const Wallet = () => {
         </Button>
       </div>
 
+      {/* Balance Summary Card - UPDATED TO SHOW LAST WITHDRAWAL */}
+      {lastWithdrawal && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-900 font-medium">Last Withdrawal</p>
+                <p className="text-blue-700">₦{lastWithdrawal.amount.toLocaleString()} on {new Date(lastWithdrawal.created_at).toLocaleDateString()}</p>
+                <p className="text-sm text-blue-600">Status: {lastWithdrawal.status.toUpperCase()}</p>
+              </div>
+              <Badge className={getWithdrawalStatusColor(lastWithdrawal.status)}>
+                {lastWithdrawal.status.toUpperCase()}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Balance Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Funding Wallet */}
@@ -500,12 +536,15 @@ const Wallet = () => {
           </CardContent>
         </Card>
 
-        {/* Earnings Wallet */}
+        {/* Earnings Wallet - UPDATED TO SHOW ACCURATE BALANCE */}
         <Card className="gradient-secondary text-white shadow-lg">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center justify-between">
               <span className="text-lg">Earnings Wallet</span>
               <TrendingUp size={24} />
+            </CardTitle>
+            <CardTitle className="text-sm text-white/80">
+              After Withdrawals Balance
             </CardTitle>
           </CardHeader>
           <CardContent>

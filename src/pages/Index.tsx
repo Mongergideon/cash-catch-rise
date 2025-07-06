@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -91,10 +90,13 @@ const Index = () => {
     if (!user || !profile) return;
 
     try {
+      // Fix: Properly handle the plan type conversion
+      const planType = profile.current_plan as 'free_trial' | 'starter' | 'bronze' | 'silver' | 'gold' | 'platinum';
+      
       const { data, error } = await supabase
         .from('plans')
         .select('games_unlocked')
-        .eq('type', profile.current_plan)
+        .eq('type', planType)
         .single();
 
       if (error) throw error;

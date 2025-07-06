@@ -44,6 +44,7 @@ interface Withdrawal {
   account_name: string;
   status: string;
   created_at: string;
+  user_id: string;
   profiles: {
     first_name: string | null;
     last_name: string | null;
@@ -152,7 +153,7 @@ const AdminDashboard = () => {
         console.error('Error fetching wallet totals:', walletsError);
       }
 
-      // Get pending withdrawals count
+      // Get pending withdrawals count - FIXED QUERY
       const { data: withdrawalsData, error: withdrawalsError } = await supabase
         .from('withdrawals')
         .select('id', { count: 'exact' })
@@ -200,7 +201,7 @@ const AdminDashboard = () => {
 
   const fetchWithdrawals = async () => {
     try {
-      // Fix the ambiguous relationship by specifying which profiles relationship to use
+      // CRITICAL FIX: Query the real withdrawals table with proper joins
       const { data, error } = await supabase
         .from('withdrawals')
         .select(`
@@ -208,13 +209,19 @@ const AdminDashboard = () => {
           profiles!withdrawals_user_id_fkey(first_name, last_name, email)
         `)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (error) {
         console.error('Error fetching withdrawals:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch withdrawal requests",
+        });
         return;
       }
       
+      console.log('Fetched withdrawals:', data);
       const typedData = data as unknown as Withdrawal[];
       setWithdrawals(typedData || []);
     } catch (error) {
@@ -245,30 +252,71 @@ const AdminDashboard = () => {
     }
   };
 
-  const processWithdrawal = async (withdrawalId: string, action: 'approve' | 'reject', notes?: string) => {
+  const processWithdrawal = async (withdrawalId: string, action: 'approve' | 'reject', withdrawal: Withdrawal) => {
     if (!user) return;
 
     setProcessing(withdrawalId);
     try {
-      const { error } = await supabase
-        .from('withdrawals')
-        .update({
-          status: action === 'approve' ? 'approved' : 'rejected',
-          processed_by: user.id,
-          processed_at: new Date().toISOString(),
-          admin_notes: notes || null
-        })
-        .eq('id', withdrawalId);
+      if (action === 'approve') {
+        // Simply approve the withdrawal - amount was already deducted
+        const { error } = await supabase
+          .from('withdrawals')
+          .update({
+            status: 'approved',
+            processed_by: user.id,
+            processed_at: new Date().toISOString()
+          })
+          .eq('id', withdrawalId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: `Withdrawal ${action}d successfully`,
-      });
+        toast({
+          title: "Success",
+          description: `Withdrawal approved successfully`,
+        });
+      } else {
+        // CRITICAL FIX: On rejection, refund both earnings and fee
+        // Refund the withdrawal amount to earnings wallet
+        const { error: refundEarningsError } = await supabase.rpc('update_wallet_balance', {
+          user_uuid: withdrawal.user_id,
+          wallet_type: 'earnings',
+          amount: withdrawal.amount,
+          transaction_description: `Withdrawal refund - ₦${withdrawal.amount.toLocaleString()}`
+        });
+
+        if (refundEarningsError) throw refundEarningsError;
+
+        // Refund the fee to funding wallet
+        const { error: refundFeeError } = await supabase.rpc('update_wallet_balance', {
+          user_uuid: withdrawal.user_id,
+          wallet_type: 'funding',
+          amount: withdrawal.fee,
+          transaction_description: 'Withdrawal fee refund'
+        });
+
+        if (refundFeeError) throw refundFeeError;
+
+        // Update withdrawal status to rejected
+        const { error } = await supabase
+          .from('withdrawals')
+          .update({
+            status: 'rejected',
+            processed_by: user.id,
+            processed_at: new Date().toISOString()
+          })
+          .eq('id', withdrawalId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: `Withdrawal rejected and funds refunded`,
+        });
+      }
 
       fetchWithdrawals();
       fetchDashboardData();
+      fetchUsers(); // Refresh user balances
     } catch (error) {
       console.error('Error processing withdrawal:', error);
       toast({
@@ -348,6 +396,13 @@ const AdminDashboard = () => {
     }
   };
 
+  // Helper function to get expected payout date
+  const getExpectedPayoutDate = (requestDate: string) => {
+    const date = new Date(requestDate);
+    date.setDate(date.getDate() + 3);
+    return date.toLocaleDateString();
+  };
+
   if (checkingAuth) {
     return (
       <div className="p-8 text-center">
@@ -421,12 +476,118 @@ const AdminDashboard = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs defaultValue="withdrawals" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="withdrawals">Withdrawal Requests</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
-          <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="withdrawals">
+          <Card>
+            <CardHeader>
+              <CardTitle>Withdrawal Requests ({withdrawals.filter(w => w.status === 'pending').length} pending)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {withdrawals.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No withdrawal requests found.</p>
+                  <Button onClick={fetchWithdrawals} className="mt-4">
+                    Refresh Requests
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Bank Details</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Expected Payout</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {withdrawals.map((withdrawal) => (
+                      <TableRow key={withdrawal.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">
+                              {withdrawal.profiles?.first_name} {withdrawal.profiles?.last_name}
+                            </p>
+                            <p className="text-sm text-gray-600">{withdrawal.profiles?.email}</p>
+                            <p className="text-xs text-gray-500">ID: {withdrawal.user_id.substring(0, 8)}...</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-semibold">₦{withdrawal.amount.toLocaleString()}</p>
+                            <p className="text-sm text-gray-600">Fee: ₦{withdrawal.fee}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{withdrawal.bank_name}</p>
+                            <p className="text-sm">{withdrawal.account_number}</p>
+                            <p className="text-sm text-gray-600">{withdrawal.account_name}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={
+                              withdrawal.status === 'pending' ? 'secondary' :
+                              withdrawal.status === 'approved' ? 'default' :
+                              'destructive'
+                            }
+                          >
+                            {withdrawal.status.toUpperCase()}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(withdrawal.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-blue-600">
+                            {getExpectedPayoutDate(withdrawal.created_at)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {withdrawal.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => processWithdrawal(withdrawal.id, 'approve', withdrawal)}
+                                disabled={processing === withdrawal.id}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => processWithdrawal(withdrawal.id, 'reject', withdrawal)}
+                                disabled={processing === withdrawal.id}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                          {withdrawal.status !== 'pending' && (
+                            <span className="text-sm text-gray-500">
+                              {withdrawal.status === 'approved' ? 'Approved' : 'Rejected'}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="users">
           <Card>
@@ -532,91 +693,6 @@ const AdminDashboard = () => {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="withdrawals">
-          <Card>
-            <CardHeader>
-              <CardTitle>Withdrawal Requests</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Bank Details</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {withdrawals.map((withdrawal) => (
-                    <TableRow key={withdrawal.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">
-                            {withdrawal.profiles?.first_name} {withdrawal.profiles?.last_name}
-                          </p>
-                          <p className="text-sm text-gray-600">{withdrawal.profiles?.email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-semibold">₦{withdrawal.amount.toLocaleString()}</p>
-                          <p className="text-sm text-gray-600">Fee: ₦{withdrawal.fee}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{withdrawal.bank_name}</p>
-                          <p className="text-sm">{withdrawal.account_number}</p>
-                          <p className="text-sm text-gray-600">{withdrawal.account_name}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            withdrawal.status === 'pending' ? 'secondary' :
-                            withdrawal.status === 'approved' ? 'default' :
-                            'destructive'
-                          }
-                        >
-                          {withdrawal.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(withdrawal.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        {withdrawal.status === 'pending' && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => processWithdrawal(withdrawal.id, 'approve')}
-                              disabled={processing === withdrawal.id}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => processWithdrawal(withdrawal.id, 'reject')}
-                              disabled={processing === withdrawal.id}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
             </CardContent>
           </Card>
         </TabsContent>
