@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, userData?: any) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `https://blueridgecashgame.vercel.app/`;
     
     const { data, error } = await supabase.auth.signUp({
       email,
