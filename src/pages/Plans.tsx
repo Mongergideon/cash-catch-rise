@@ -22,6 +22,8 @@ interface Plan {
   duration_days: number;
   can_withdraw: boolean;
   type: string;
+  withdrawal_frequency?: string;
+  games_unlocked?: number;
 }
 
 interface UserProfile {
@@ -333,7 +335,7 @@ const Plans = () => {
                     <span className="text-sm text-gray-700">
                       {plan.games_unlocked === 1 ? '1 game access' : 
                        plan.games_unlocked === 4 ? 'All games access' :
-                       `${plan.games_unlocked} games access`}
+                       `${plan.games_unlocked || 1} games access`}
                     </span>
                   </li>
                   <li className="flex items-center space-x-2">
