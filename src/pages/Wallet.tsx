@@ -1,15 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wallet as WalletIcon, Plus, ArrowDownToLine, Eye, EyeOff, TrendingUp, DollarSign } from 'lucide-react';
+import { Wallet as WalletIcon, Plus, ArrowDownToLine, Eye, EyeOff, TrendingUp, DollarSign, MessageCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { NIGERIAN_BANKS } from '@/data/nigerianBanks';
 
 // Declare FlutterwaveCheckout for TypeScript
 declare global {
@@ -22,6 +25,7 @@ interface WalletData {
   wallet_funding: number;
   wallet_earnings: number;
   next_withdraw_at: string | null;
+  current_plan: string;
 }
 
 interface Transaction {
@@ -37,7 +41,8 @@ const Wallet = () => {
   const [walletData, setWalletData] = useState<WalletData>({
     wallet_funding: 0,
     wallet_earnings: 0,
-    next_withdraw_at: null
+    next_withdraw_at: null,
+    current_plan: 'free_trial'
   });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [fundingAmount, setFundingAmount] = useState('');
@@ -50,6 +55,8 @@ const Wallet = () => {
   const [loading, setLoading] = useState(true);
   const [fundingDialog, setFundingDialog] = useState(false);
   const [withdrawalDialog, setWithdrawalDialog] = useState(false);
+  const [canWithdraw, setCanWithdraw] = useState(false);
+  const [withdrawalSuccess, setWithdrawalSuccess] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -57,6 +64,7 @@ const Wallet = () => {
     if (user) {
       fetchWalletData();
       fetchTransactions();
+      checkWithdrawalEligibility();
     }
   }, [user]);
 
@@ -64,16 +72,32 @@ const Wallet = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('wallet_funding, wallet_earnings, next_withdraw_at')
+        .select('wallet_funding, wallet_earnings, next_withdraw_at, current_plan')
         .eq('id', user?.id)
         .single();
 
       if (error) throw error;
-      setWalletData(data || { wallet_funding: 0, wallet_earnings: 0, next_withdraw_at: null });
+      setWalletData(data || { wallet_funding: 0, wallet_earnings: 0, next_withdraw_at: null, current_plan: 'free_trial' });
     } catch (error) {
       console.error('Error fetching wallet data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkWithdrawalEligibility = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase.rpc('can_user_withdraw', {
+        user_uuid: user.id
+      });
+
+      if (error) throw error;
+      setCanWithdraw(data);
+    } catch (error) {
+      console.error('Error checking withdrawal eligibility:', error);
+      setCanWithdraw(false);
     }
   };
 
@@ -236,16 +260,18 @@ const Wallet = () => {
         transaction_description: 'Withdrawal fee'
       });
 
-      toast({
-        title: "Withdrawal Request Submitted",
-        description: "Your withdrawal request is being processed. You'll be notified once approved.",
+      // Update next withdrawal time
+      await supabase.rpc('update_next_withdrawal_time', {
+        user_uuid: user?.id
       });
 
+      setWithdrawalSuccess(true);
       setWithdrawalDialog(false);
       setWithdrawalAmount('');
       setBankDetails({ account_name: '', account_number: '', bank_name: '' });
       fetchWalletData();
       fetchTransactions();
+      checkWithdrawalEligibility();
     } catch (error) {
       console.error('Error processing withdrawal:', error);
       toast({
@@ -255,6 +281,15 @@ const Wallet = () => {
       });
     }
   };
+
+  const getExpectedPaymentDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() + 3);
+    return date.toLocaleDateString();
+  };
+
+  // Check if user is on free plan
+  const isFreeUser = walletData.current_plan === 'free_trial';
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -297,6 +332,50 @@ const Wallet = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Withdrawal Success Alert */}
+      {withdrawalSuccess && (
+        <Alert className="bg-green-50 border-green-200">
+          <AlertCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <div className="space-y-2">
+              <p>✅ Withdrawal submitted successfully!</p>
+              <p><strong>Expected payment date:</strong> {getExpectedPaymentDate()}</p>
+              <div className="mt-3 p-3 bg-green-100 rounded-lg">
+                <p className="font-medium">❗To confirm your withdrawal, please contact support on WhatsApp:</p>
+                <a 
+                  href="https://wa.me/2349136139429" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-green-600 hover:text-green-700 font-medium underline"
+                >
+                  👉 https://wa.me/2349136139429
+                </a>
+                <p className="text-sm">💬 Available 24/7</p>
+              </div>
+              <Button 
+                onClick={() => setWithdrawalSuccess(false)} 
+                variant="outline" 
+                size="sm"
+                className="mt-2"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Free User Withdrawal Restriction */}
+      {isFreeUser && (
+        <Alert className="bg-red-50 border-red-200">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">
+            <p>❌ Withdrawals are locked for Free Plan users.</p>
+            <p>🔓 Upgrade to unlock this feature.</p>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Wallet</h1>
@@ -384,10 +463,10 @@ const Wallet = () => {
                 <DialogTrigger asChild>
                   <Button 
                     className="w-full bg-white text-green-600 hover:bg-gray-100"
-                    disabled={(walletData.wallet_earnings || 0) < 30000}
+                    disabled={isFreeUser || !canWithdraw || (walletData.wallet_earnings || 0) < 30000}
                   >
                     <ArrowDownToLine size={16} className="mr-2" />
-                    Withdraw
+                    {isFreeUser ? 'Locked' : 'Withdraw'}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -425,12 +504,21 @@ const Wallet = () => {
                     </div>
                     <div>
                       <Label htmlFor="bank-name">Bank Name</Label>
-                      <Input
-                        id="bank-name"
-                        placeholder="Enter bank name"
-                        value={bankDetails.bank_name}
-                        onChange={(e) => setBankDetails({...bankDetails, bank_name: e.target.value})}
-                      />
+                      <Select 
+                        value={bankDetails.bank_name} 
+                        onValueChange={(value) => setBankDetails({...bankDetails, bank_name: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your bank" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white z-50">
+                          {NIGERIAN_BANKS.map((bank) => (
+                            <SelectItem key={bank} value={bank}>
+                              {bank}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <Button onClick={handleWithdrawal} className="w-full">
                       Submit Withdrawal Request
@@ -505,6 +593,28 @@ const Wallet = () => {
             <li>• Processing time: 1-3 business days after approval</li>
             <li>• Free Trial users cannot withdraw earnings</li>
           </ul>
+        </CardContent>
+      </Card>
+
+      {/* WhatsApp Support */}
+      <Card className="bg-green-50 border-green-200">
+        <CardHeader>
+          <CardTitle className="text-green-900 flex items-center">
+            <MessageCircle className="h-5 w-5 mr-2" />
+            Need Help?
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-green-800 mb-2">Contact our 24/7 WhatsApp Support:</p>
+          <a 
+            href="https://wa.me/2349136139429" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-green-600 hover:text-green-700 font-medium underline"
+          >
+            👉 https://wa.me/2349136139429
+          </a>
+          <p className="text-green-700 text-sm mt-1">💬 Chat with Support – Available 24/7</p>
         </CardContent>
       </Card>
     </div>

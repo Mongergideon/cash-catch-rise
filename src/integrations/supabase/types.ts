@@ -158,33 +158,39 @@ export type Database = {
           cost: number
           created_at: string | null
           duration_days: number
+          games_unlocked: number | null
           id: string
           is_active: boolean | null
           max_daily_earnings: number
           name: string
           type: Database["public"]["Enums"]["plan_type"]
+          withdrawal_frequency: string | null
         }
         Insert: {
           can_withdraw: boolean
           cost: number
           created_at?: string | null
           duration_days: number
+          games_unlocked?: number | null
           id?: string
           is_active?: boolean | null
           max_daily_earnings: number
           name: string
           type: Database["public"]["Enums"]["plan_type"]
+          withdrawal_frequency?: string | null
         }
         Update: {
           can_withdraw?: boolean
           cost?: number
           created_at?: string | null
           duration_days?: number
+          games_unlocked?: number | null
           id?: string
           is_active?: boolean | null
           max_daily_earnings?: number
           name?: string
           type?: Database["public"]["Enums"]["plan_type"]
+          withdrawal_frequency?: string | null
         }
         Relationships: []
       }
@@ -198,6 +204,7 @@ export type Database = {
           is_banned: boolean | null
           last_name: string | null
           next_withdraw_at: string | null
+          next_withdrawal_allowed_at: string | null
           phone: string | null
           plan_expires_at: string | null
           referral_code: string | null
@@ -215,6 +222,7 @@ export type Database = {
           is_banned?: boolean | null
           last_name?: string | null
           next_withdraw_at?: string | null
+          next_withdrawal_allowed_at?: string | null
           phone?: string | null
           plan_expires_at?: string | null
           referral_code?: string | null
@@ -232,6 +240,7 @@ export type Database = {
           is_banned?: boolean | null
           last_name?: string | null
           next_withdraw_at?: string | null
+          next_withdrawal_allowed_at?: string | null
           phone?: string | null
           plan_expires_at?: string | null
           referral_code?: string | null
@@ -544,6 +553,14 @@ export type Database = {
           total_earnings: number
           total_funding: number
         }[]
+      }
+      can_user_withdraw: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
+      update_next_withdrawal_time: {
+        Args: { user_uuid: string }
+        Returns: boolean
       }
       update_wallet_balance: {
         Args: {

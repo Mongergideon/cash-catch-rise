@@ -1,0 +1,25 @@
+
+export const NIGERIAN_BANKS = [
+  'Access Bank',
+  'Citibank Nigeria',
+  'Ecobank Nigeria',
+  'Fidelity Bank',
+  'First Bank of Nigeria',
+  'First City Monument Bank',
+  'Guaranty Trust Bank',
+  'Heritage Bank',
+  'Keystone Bank',
+  'Kuda Bank',
+  'Opay',
+  'PalmPay',
+  'Polaris Bank',
+  'Providus Bank',
+  'Stanbic IBTC Bank',
+  'Standard Chartered Bank',
+  'Sterling Bank',
+  'Union Bank of Nigeria',
+  'United Bank for Africa',
+  'Unity Bank',
+  'Wema Bank',
+  'Zenith Bank'
+].sort();

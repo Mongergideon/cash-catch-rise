@@ -17,6 +17,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import WelcomePopup from '@/components/WelcomePopup';
+import GameCard from '@/components/GameCard';
 
 interface Profile {
   wallet_earnings: number;
@@ -30,10 +32,16 @@ interface DailyEarnings {
   total_earned: number;
 }
 
+interface Plan {
+  games_unlocked: number;
+}
+
 const Index = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dailyEarnings, setDailyEarnings] = useState<DailyEarnings | null>(null);
+  const [userPlan, setUserPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -42,10 +50,24 @@ const Index = () => {
     if (user) {
       fetchProfile();
       fetchDailyEarnings();
+      fetchUserPlan();
+      checkFirstLogin();
     } else {
       navigate('/auth');
     }
   }, [user, navigate]);
+
+  const checkFirstLogin = () => {
+    const hasSeenWelcome = localStorage.getItem(`welcome_seen_${user?.id}`);
+    if (!hasSeenWelcome) {
+      setShowWelcome(true);
+    }
+  };
+
+  const handleWelcomeClose = () => {
+    setShowWelcome(false);
+    localStorage.setItem(`welcome_seen_${user?.id}`, 'true');
+  };
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -63,6 +85,23 @@ const Index = () => {
       console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserPlan = async () => {
+    if (!user || !profile) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('plans')
+        .select('games_unlocked')
+        .eq('type', profile.current_plan)
+        .single();
+
+      if (error) throw error;
+      setUserPlan(data);
+    } catch (error) {
+      console.error('Error fetching user plan:', error);
     }
   };
 
@@ -136,6 +175,12 @@ const Index = () => {
     }
   };
 
+  useEffect(() => {
+    if (profile) {
+      fetchUserPlan();
+    }
+  }, [profile]);
+
   if (!user) {
     return (
       <div className="p-8 text-center">
@@ -164,33 +209,43 @@ const Index = () => {
       description: 'Tap falling money to earn real cash',
       icon: <Coins className="h-8 w-8 text-yellow-500" />,
       route: '/game/money-falling',
-      color: 'from-yellow-400 to-yellow-600'
+      color: 'from-yellow-400 to-yellow-600',
+      gameNumber: 1,
+      requiredPlan: 'Any Plan'
     },
     {
       title: 'Coin Runner',
       description: 'Endless runner with coin collection',
       icon: <Gamepad2 className="h-8 w-8 text-blue-500" />,
       route: '/game/coin-runner',
-      color: 'from-blue-400 to-blue-600'
+      color: 'from-blue-400 to-blue-600',
+      gameNumber: 2,
+      requiredPlan: 'Starter Plan'
     },
     {
       title: 'Spin to Win',
       description: 'Spin the wheel every 2 hours',
       icon: <RotateCcw className="h-8 w-8 text-purple-500" />,
       route: '/game/spin-wheel',
-      color: 'from-purple-400 to-purple-600'
+      color: 'from-purple-400 to-purple-600',
+      gameNumber: 3,
+      requiredPlan: 'Bronze Plan'
     },
     {
       title: 'Memory Flip',
       description: 'Match Naira pairs under timer',
       icon: <Brain className="h-8 w-8 text-green-500" />,
       route: '/game/memory-flip',
-      color: 'from-green-400 to-green-600'
+      color: 'from-green-400 to-green-600',
+      gameNumber: 4,
+      requiredPlan: 'Silver Plan'
     }
   ];
 
   return (
     <div className="p-6 space-y-6">
+      <WelcomePopup isOpen={showWelcome} onClose={handleWelcomeClose} />
+
       {/* Welcome Section */}
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900">
@@ -256,22 +311,17 @@ const Index = () => {
         <h2 className="text-2xl font-bold text-gray-900 mb-4">🎮 Games</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {games.map((game, index) => (
-            <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer">
-              <Link to={game.route}>
-                <CardHeader>
-                  <div className={`w-16 h-16 rounded-full bg-gradient-to-r ${game.color} flex items-center justify-center mb-3`}>
-                    {game.icon}
-                  </div>
-                  <CardTitle className="text-xl">{game.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">{game.description}</p>
-                  <Button className="w-full gradient-primary text-white">
-                    Play Now
-                  </Button>
-                </CardContent>
-              </Link>
-            </Card>
+            <GameCard
+              key={index}
+              title={game.title}
+              description={game.description}
+              icon={game.icon}
+              route={game.route}
+              color={game.color}
+              gameNumber={game.gameNumber}
+              userPlanGames={userPlan?.games_unlocked || 1}
+              requiredPlan={game.requiredPlan}
+            />
           ))}
         </div>
       </div>
