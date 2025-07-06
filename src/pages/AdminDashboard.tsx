@@ -136,12 +136,12 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Use service role to bypass RLS for admin queries
-      const { data: usersData, error: usersError } = await supabase
+      // Get user count using RPC function
+      const { data: userCountData, error: userCountError } = await supabase
         .rpc('admin_get_user_count');
 
-      if (usersError) {
-        console.error('Error fetching user count:', usersError);
+      if (userCountError) {
+        console.error('Error fetching user count:', userCountError);
       }
 
       // Get total wallet balances using RPC
@@ -163,7 +163,7 @@ const AdminDashboard = () => {
       }
 
       setStats({
-        totalUsers: usersData || 0,
+        totalUsers: userCountData || 0,
         totalEarnings: walletsData?.[0]?.total_earnings || 0,
         totalFunding: walletsData?.[0]?.total_funding || 0,
         pendingWithdrawals: withdrawalsData?.length || 0

@@ -514,6 +514,37 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_ban_user: {
+        Args: { user_uuid: string; banned: boolean }
+        Returns: boolean
+      }
+      admin_get_all_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+          first_name: string
+          last_name: string
+          wallet_earnings: number
+          wallet_funding: number
+          current_plan: string
+          plan_expires_at: string
+          is_banned: boolean
+          created_at: string
+          referral_code: string
+        }[]
+      }
+      admin_get_user_count: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      admin_get_wallet_totals: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          total_earnings: number
+          total_funding: number
+        }[]
+      }
       update_wallet_balance: {
         Args: {
           user_uuid: string
