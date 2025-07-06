@@ -50,7 +50,6 @@ const Index = () => {
     if (user) {
       fetchProfile();
       fetchDailyEarnings();
-      fetchUserPlan();
       checkFirstLogin();
     } else {
       navigate('/auth');

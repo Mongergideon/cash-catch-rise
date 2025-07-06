@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wallet as WalletIcon, Plus, ArrowDownToLine, Eye, EyeOff, TrendingUp, DollarSign, MessageCircle, AlertCircle } from 'lucide-react';
+import { Wallet as WalletIcon, Plus, ArrowDownToLine, Eye, EyeOff, TrendingUp, DollarSign, MessageCircle, AlertCircle, History, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { NIGERIAN_BANKS } from '@/data/nigerianBanks';
+import WithdrawalCard from '@/components/WithdrawalCard';
 
 // Declare FlutterwaveCheckout for TypeScript
 declare global {
@@ -36,6 +37,17 @@ interface Transaction {
   created_at: string;
 }
 
+interface Withdrawal {
+  id: string;
+  amount: number;
+  fee: number;
+  account_name: string;
+  account_number: string;
+  bank_name: string;
+  status: string;
+  created_at: string;
+}
+
 const Wallet = () => {
   const [showBalance, setShowBalance] = useState(true);
   const [walletData, setWalletData] = useState<WalletData>({
@@ -45,6 +57,7 @@ const Wallet = () => {
     current_plan: 'free_trial'
   });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [fundingAmount, setFundingAmount] = useState('');
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [bankDetails, setBankDetails] = useState({
@@ -56,7 +69,8 @@ const Wallet = () => {
   const [fundingDialog, setFundingDialog] = useState(false);
   const [withdrawalDialog, setWithdrawalDialog] = useState(false);
   const [canWithdraw, setCanWithdraw] = useState(false);
-  const [withdrawalSuccess, setWithdrawalSuccess] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successWithdrawal, setSuccessWithdrawal] = useState<any>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -64,6 +78,7 @@ const Wallet = () => {
     if (user) {
       fetchWalletData();
       fetchTransactions();
+      fetchWithdrawals();
       checkWithdrawalEligibility();
     }
   }, [user]);
@@ -114,6 +129,21 @@ const Wallet = () => {
       setTransactions(data || []);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+    }
+  };
+
+  const fetchWithdrawals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('withdrawals')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setWithdrawals(data || []);
+    } catch (error) {
+      console.error('Error fetching withdrawals:', error);
     }
   };
 
@@ -222,7 +252,7 @@ const Wallet = () => {
       toast({
         variant: "destructive",
         title: "Insufficient Funding Balance",
-        description: "You need at least ₦500 in your funding wallet to cover withdrawal fees",
+        description: "You don't have enough balance to cover the withdrawal fee. Fund your wallet first.",
       });
       return;
     }
@@ -238,7 +268,7 @@ const Wallet = () => {
 
     try {
       // Create withdrawal request
-      const { error } = await supabase
+      const { data: withdrawal, error } = await supabase
         .from('withdrawals')
         .insert({
           user_id: user?.id,
@@ -248,11 +278,13 @@ const Wallet = () => {
           account_number: bankDetails.account_number,
           bank_name: bankDetails.bank_name,
           status: 'pending'
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      // Deduct fee from funding wallet
+      // Deduct fee from funding wallet only
       await supabase.rpc('update_wallet_balance', {
         user_uuid: user?.id,
         wallet_type: 'funding',
@@ -265,12 +297,20 @@ const Wallet = () => {
         user_uuid: user?.id
       });
 
-      setWithdrawalSuccess(true);
+      // Set success data and show modal
+      setSuccessWithdrawal({
+        amount: amount,
+        bank_name: bankDetails.bank_name,
+        expected_date: getExpectedPaymentDate()
+      });
+      setShowSuccessModal(true);
+      
       setWithdrawalDialog(false);
       setWithdrawalAmount('');
       setBankDetails({ account_name: '', account_number: '', bank_name: '' });
       fetchWalletData();
       fetchTransactions();
+      fetchWithdrawals();
       checkWithdrawalEligibility();
     } catch (error) {
       console.error('Error processing withdrawal:', error);
@@ -314,6 +354,20 @@ const Wallet = () => {
     }
   };
 
+  const getWithdrawalStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'approved':
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (!user) {
     return (
       <div className="p-8 text-center">
@@ -332,38 +386,41 @@ const Wallet = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      {/* Withdrawal Success Alert */}
-      {withdrawalSuccess && (
-        <Alert className="bg-green-50 border-green-200">
-          <AlertCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
-            <div className="space-y-2">
-              <p>✅ Withdrawal submitted successfully!</p>
-              <p><strong>Expected payment date:</strong> {getExpectedPaymentDate()}</p>
-              <div className="mt-3 p-3 bg-green-100 rounded-lg">
-                <p className="font-medium">❗To confirm your withdrawal, please contact support on WhatsApp:</p>
-                <a 
-                  href="https://wa.me/2349136139429" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-green-600 hover:text-green-700 font-medium underline"
-                >
-                  👉 https://wa.me/2349136139429
-                </a>
-                <p className="text-sm">💬 Available 24/7</p>
-              </div>
-              <Button 
-                onClick={() => setWithdrawalSuccess(false)} 
-                variant="outline" 
-                size="sm"
-                className="mt-2"
-              >
-                Dismiss
-              </Button>
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2 text-green-600">
+              <CheckCircle className="h-6 w-6" />
+              <span>Withdrawal Submitted!</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-green-50 p-4 rounded-lg space-y-2">
+              <p><span className="font-medium">💳 Amount:</span> ₦{successWithdrawal?.amount?.toLocaleString()}</p>
+              <p><span className="font-medium">🏦 Bank:</span> {successWithdrawal?.bank_name}</p>
+              <p><span className="font-medium">📅 Expected Payment:</span> {successWithdrawal?.expected_date}</p>
             </div>
-          </AlertDescription>
-        </Alert>
-      )}
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="font-medium text-blue-800 mb-2">💬 Need help? Contact support via WhatsApp anytime:</p>
+              <a 
+                href="https://wa.me/2349136139429" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 font-medium underline"
+              >
+                👉 https://wa.me/2349136139429
+              </a>
+            </div>
+            <Button 
+              onClick={() => setShowSuccessModal(false)} 
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Free User Withdrawal Restriction */}
       {isFreeUser && (
@@ -533,6 +590,51 @@ const Wallet = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Withdrawal History */}
+      {withdrawals.length > 0 && (
+        <Card className="bg-white shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <History className="h-5 w-5 mr-2" />
+              Withdrawal History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {withdrawals.map((withdrawal) => (
+                <div key={withdrawal.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <ArrowDownToLine className="text-blue-600" size={20} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          ₦{withdrawal.amount.toLocaleString()} to {withdrawal.bank_name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {new Date(withdrawal.created_at).toLocaleDateString()}
+                          {withdrawal.status === 'pending' && (
+                            <span className="ml-2 text-blue-600">
+                              • Expected: {new Date(new Date(withdrawal.created_at).getTime() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Badge className={getWithdrawalStatusColor(withdrawal.status)}>
+                      {withdrawal.status.toUpperCase()}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Transactions */}
       <Card className="bg-white shadow-lg">
