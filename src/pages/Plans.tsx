@@ -241,7 +241,7 @@ const Plans = () => {
       <div className="text-center space-y-4">
         <h1 className="text-3xl font-bold text-gray-900">Choose Your Investment Plan</h1>
         <p className="text-gray-600 max-w-2xl mx-auto">
-          Select a plan that fits your earning goals. Upgrade anytime to increase your daily earning potential.
+          Upgrade your plan to unlock higher earning potential and withdrawal privileges. Free Trial users have limited features.
         </p>
       </div>
 
@@ -266,6 +266,20 @@ const Plans = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Plan Restrictions Notice */}
+      <Card className="bg-amber-50 border-amber-200">
+        <CardContent className="p-4">
+          <div className="space-y-2">
+            <p className="font-semibold text-amber-900">Plan Benefits & Restrictions:</p>
+            <ul className="text-sm text-amber-800 space-y-1">
+              <li>• <strong>Free Trial:</strong> Cannot withdraw earnings - upgrade to unlock withdrawals</li>
+              <li>• <strong>Starter - Silver:</strong> Weekly withdrawals only</li>
+              <li>• <strong>Gold & Platinum:</strong> Daily withdrawals + access to all games</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -306,14 +320,21 @@ const Plans = () => {
                     Daily Cap: ₦{plan.max_daily_earnings.toLocaleString()}
                   </p>
                   <p className="text-sm text-gray-600">
-                    {plan.can_withdraw ? 'Withdrawal allowed' : 'No withdrawal rights'}
+                    {plan.can_withdraw ? 
+                      `${plan.withdrawal_frequency === 'daily' ? 'Daily' : 'Weekly'} withdrawals` : 
+                      'No withdrawal rights'
+                    }
                   </p>
                 </div>
                 
                 <ul className="space-y-2">
                   <li className="flex items-center space-x-2">
                     <CheckCircle className="text-green-500" size={16} />
-                    <span className="text-sm text-gray-700">All games access</span>
+                    <span className="text-sm text-gray-700">
+                      {plan.games_unlocked === 1 ? '1 game access' : 
+                       plan.games_unlocked === 4 ? 'All games access' :
+                       `${plan.games_unlocked} games access`}
+                    </span>
                   </li>
                   <li className="flex items-center space-x-2">
                     <CheckCircle className="text-green-500" size={16} />
@@ -326,14 +347,22 @@ const Plans = () => {
                   {plan.can_withdraw && (
                     <li className="flex items-center space-x-2">
                       <CheckCircle className="text-green-500" size={16} />
-                      <span className="text-sm text-gray-700">Weekly withdrawals</span>
+                      <span className="text-sm text-gray-700">
+                        {plan.withdrawal_frequency === 'daily' ? 'Daily' : 'Weekly'} withdrawal access
+                      </span>
+                    </li>
+                  )}
+                  {!plan.can_withdraw && (
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle className="text-red-500" size={16} />
+                      <span className="text-sm text-red-700">No withdrawal privileges</span>
                     </li>
                   )}
                 </ul>
                 
                 <Button
                   onClick={() => handlePlanPurchase(plan)}
-                  disabled={purchasing === plan.id || isCurrentPlan || (userProfile?.wallet_funding || 0) < plan.cost}
+                  disabled={purchasing === plan.id || isCurrentPlan}
                   className={`w-full ${
                     isCurrentPlan 
                       ? 'bg-gray-500 hover:bg-gray-600' 

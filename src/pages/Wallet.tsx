@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Wallet as WalletIcon, Plus, ArrowDownToLine, Eye, EyeOff, TrendingUp, DollarSign, MessageCircle, AlertCircle, History, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

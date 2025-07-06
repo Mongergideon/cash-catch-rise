@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, Wallet, TrendingUp, AlertCircle, Check, X, LogOut, Edit, Ban, UserPlus, Settings } from 'lucide-react';
+import { Users, Wallet, TrendingUp, AlertCircle, Check, X, LogOut, Edit, Ban, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -201,7 +200,6 @@ const AdminDashboard = () => {
 
   const fetchWithdrawals = async () => {
     try {
-      // CRITICAL FIX: Query the real withdrawals table with proper joins
       const { data, error } = await supabase
         .from('withdrawals')
         .select(`
@@ -258,7 +256,7 @@ const AdminDashboard = () => {
     setProcessing(withdrawalId);
     try {
       if (action === 'approve') {
-        // Simply approve the withdrawal - amount was already deducted
+        // Simply approve the withdrawal - amount was already deducted when request was made
         const { error } = await supabase
           .from('withdrawals')
           .update({
@@ -275,8 +273,7 @@ const AdminDashboard = () => {
           description: `Withdrawal approved successfully`,
         });
       } else {
-        // CRITICAL FIX: On rejection, refund both earnings and fee
-        // Refund the withdrawal amount to earnings wallet
+        // On rejection, refund both earnings and fee
         const { error: refundEarningsError } = await supabase.rpc('update_wallet_balance', {
           user_uuid: withdrawal.user_id,
           wallet_type: 'earnings',
@@ -316,7 +313,7 @@ const AdminDashboard = () => {
 
       fetchWithdrawals();
       fetchDashboardData();
-      fetchUsers(); // Refresh user balances
+      fetchUsers();
     } catch (error) {
       console.error('Error processing withdrawal:', error);
       toast({
@@ -550,7 +547,7 @@ const AdminDashboard = () => {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-blue-600">
-                            {getExpectedPayoutDate(withdrawal.created_at)}
+                            {new Date(new Date(withdrawal.created_at).getTime() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}
                           </span>
                         </TableCell>
                         <TableCell>
