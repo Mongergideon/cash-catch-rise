@@ -254,13 +254,13 @@ const Wallet = () => {
       return;
     }
 
-    // Check for high withdrawal fee
-    const isHighWithdrawal = amount > 200000;
-    const withdrawalFee = isHighWithdrawal ? 5000 : 500;
+    // Check for withdrawal fee - ₦3,000 for amounts ₦100,000 and above
+    const requiresFee = amount >= 100000;
+    const withdrawalFee = requiresFee ? 3000 : 500;
     
     if (walletData.wallet_funding < withdrawalFee) {
-      const feeMessage = isHighWithdrawal 
-        ? "Withdrawals above ₦200,000 require a ₦5,000 processing fee in your funding wallet."
+      const feeMessage = requiresFee 
+        ? "Withdrawals of ₦100,000 and above require a ₦3,000 processing fee in your funding wallet."
         : "You don't have enough balance to cover the withdrawal fee. Fund your wallet first.";
       
       toast({
@@ -296,7 +296,7 @@ const Wallet = () => {
         user_uuid: user?.id,
         wallet_type: 'funding',
         amount: -withdrawalFee,
-        transaction_description: `Withdrawal fee - ${isHighWithdrawal ? 'High amount' : 'Standard'}`
+        transaction_description: `Withdrawal fee - ${requiresFee ? 'High amount (₦100k+)' : 'Standard'}`
       });
 
       if (feeError) throw feeError;
@@ -634,7 +634,7 @@ const Wallet = () => {
                 </DialogContent>
               </Dialog>
               <p className="text-xs text-white/70">
-                Minimum withdrawal: ₦30,000 • Fee: ₦500 (₦5,000 for amounts above ₦200,000)
+                Minimum withdrawal: ₦30,000 • Fee: ₦500 (₦3,000 for amounts ₦100,000 and above)
               </p>
             </div>
           </CardContent>
@@ -740,7 +740,7 @@ const Wallet = () => {
         <CardContent className="text-blue-800">
           <ul className="space-y-2 text-sm">
             <li>• Minimum withdrawal amount: ₦30,000</li>
-            <li>• Withdrawal fee: ₦500 (₦5,000 for amounts above ₦200,000)</li>
+            <li>• Withdrawal fee: ₦500 (₦3,000 for amounts ₦100,000 and above)</li>
             <li>• Frequency: Maximum 1 withdrawal per 7 days</li>
             <li>• Processing time: 1-3 business days after approval</li>
             <li>• Free Trial users cannot withdraw earnings</li>
