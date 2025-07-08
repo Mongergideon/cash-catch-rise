@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Wallet as WalletIcon, Plus, ArrowDownToLine, Eye, EyeOff, TrendingUp, DollarSign, MessageCircle, AlertCircle, History, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -350,7 +351,7 @@ const Wallet = () => {
 
   const getExpectedPaymentDate = () => {
     const date = new Date();
-    date.setDate(date.getDate() + 3);
+    date.setDate(date.getDate() + 7); // Changed from 3 to 7 days
     return date.toLocaleDateString();
   };
 
@@ -667,7 +668,7 @@ const Wallet = () => {
                           {new Date(withdrawal.created_at).toLocaleDateString()}
                           {withdrawal.status === 'pending' && (
                             <span className="ml-2 text-blue-600">
-                              • Expected: {new Date(new Date(withdrawal.created_at).getTime() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                              • Expected: {new Date(new Date(withdrawal.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
                             </span>
                           )}
                         </p>
@@ -742,7 +743,7 @@ const Wallet = () => {
             <li>• Minimum withdrawal amount: ₦30,000</li>
             <li>• Withdrawal fee: ₦500 (₦3,000 for amounts ₦100,000 and above)</li>
             <li>• Frequency: Maximum 1 withdrawal per 7 days</li>
-            <li>• Processing time: 1-3 business days after approval</li>
+            <li>• Processing time: 1-7 business days after approval</li>
             <li>• Free Trial users cannot withdraw earnings</li>
           </ul>
         </CardContent>
