@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { NIGERIAN_BANKS } from '@/data/nigerianBanks';
 import WithdrawalCard from '@/components/WithdrawalCard';
+import WalletNotificationBanner from '@/components/WalletNotificationBanner';
 
 // Declare FlutterwaveCheckout for TypeScript
 declare global {
@@ -253,11 +254,19 @@ const Wallet = () => {
       return;
     }
 
-    if (walletData.wallet_funding < 500) {
+    // Check for high withdrawal fee
+    const isHighWithdrawal = amount > 200000;
+    const withdrawalFee = isHighWithdrawal ? 5000 : 500;
+    
+    if (walletData.wallet_funding < withdrawalFee) {
+      const feeMessage = isHighWithdrawal 
+        ? "Withdrawals above ₦200,000 require a ₦5,000 processing fee in your funding wallet."
+        : "You don't have enough balance to cover the withdrawal fee. Fund your wallet first.";
+      
       toast({
         variant: "destructive",
         title: "Insufficient Funding Balance",
-        description: "You don't have enough balance to cover the withdrawal fee. Fund your wallet first.",
+        description: feeMessage,
       });
       return;
     }
@@ -286,8 +295,8 @@ const Wallet = () => {
       const { error: feeError } = await supabase.rpc('update_wallet_balance', {
         user_uuid: user?.id,
         wallet_type: 'funding',
-        amount: -500,
-        transaction_description: 'Withdrawal fee'
+        amount: -withdrawalFee,
+        transaction_description: `Withdrawal fee - ${isHighWithdrawal ? 'High amount' : 'Standard'}`
       });
 
       if (feeError) throw feeError;
@@ -298,7 +307,7 @@ const Wallet = () => {
         .insert({
           user_id: user?.id,
           amount: amount,
-          fee: 500,
+          fee: withdrawalFee,
           account_name: bankDetails.account_name,
           account_number: bankDetails.account_number,
           bank_name: bankDetails.bank_name,
@@ -403,6 +412,9 @@ const Wallet = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Notification Banner */}
+      <WalletNotificationBanner />
+
       {/* Success Modal */}
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogContent className="bg-white">
@@ -622,7 +634,7 @@ const Wallet = () => {
                 </DialogContent>
               </Dialog>
               <p className="text-xs text-white/70">
-                Minimum withdrawal: ₦30,000 • Fee: ₦500
+                Minimum withdrawal: ₦30,000 • Fee: ₦500 (₦5,000 for amounts above ₦200,000)
               </p>
             </div>
           </CardContent>
@@ -728,7 +740,7 @@ const Wallet = () => {
         <CardContent className="text-blue-800">
           <ul className="space-y-2 text-sm">
             <li>• Minimum withdrawal amount: ₦30,000</li>
-            <li>• Withdrawal fee: ₦500 (deducted from funding wallet)</li>
+            <li>• Withdrawal fee: ₦500 (₦5,000 for amounts above ₦200,000)</li>
             <li>• Frequency: Maximum 1 withdrawal per 7 days</li>
             <li>• Processing time: 1-3 business days after approval</li>
             <li>• Free Trial users cannot withdraw earnings</li>
