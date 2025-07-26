@@ -25,6 +25,7 @@ interface UserProfile {
   email: string;
   first_name: string;
   last_name: string;
+  phone: string;
   wallet_earnings: number;
   wallet_funding: number;
   current_plan: string;
@@ -44,11 +45,13 @@ interface Withdrawal {
   status: string;
   created_at: string;
   user_id: string;
-  profiles: {
-    first_name: string | null;
-    last_name: string | null;
-    email: string | null;
-  } | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  processed_at: string | null;
+  processed_by: string | null;
+  admin_notes: string | null;
 }
 
 interface Transaction {
@@ -202,75 +205,26 @@ const AdminDashboard = () => {
     try {
       console.log('Fetching withdrawals for admin dashboard...');
       
-      // First, let's try to get all withdrawals using a direct query
-      const { data: directWithdrawals, error: directError } = await supabase
-        .from('withdrawals')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Use the new admin function to get all withdrawals with user data
+      const { data, error } = await supabase
+        .rpc('admin_get_all_withdrawals');
 
-      console.log('Direct withdrawals query result:', { directWithdrawals, directError });
-
-      // Then try to get withdrawals with profile data using a more explicit approach
-      const { data: withdrawalsWithProfiles, error: profileError } = await supabase
-        .from('withdrawals')
-        .select(`
-          id,
-          user_id,
-          amount,
-          fee,
-          bank_name,
-          account_number,
-          account_name,
-          status,
-          created_at,
-          processed_at,
-          processed_by,
-          admin_notes,
-          profiles!inner(
-            id,
-            email,
-            first_name,
-            last_name
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      console.log('Withdrawals with profiles query result:', { withdrawalsWithProfiles, profileError });
-
-      if (profileError) {
-        console.error('Error fetching withdrawals with profiles:', profileError);
-        
-        // Fallback: try without profiles join
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('withdrawals')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100);
-
-        console.log('Fallback withdrawals query result:', { fallbackData, fallbackError });
-
-        if (fallbackError) {
-          throw fallbackError;
-        }
-
-        // Set withdrawals without profile data for now
-        const withdrawalsFormatted = (fallbackData || []).map(withdrawal => ({
-          ...withdrawal,
-          profiles: null
-        }));
-
-        setWithdrawals(withdrawalsFormatted);
+      if (error) {
+        console.error('Error fetching withdrawals:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch withdrawal requests",
+        });
         return;
       }
       
-      console.log('Successfully fetched withdrawals:', withdrawalsWithProfiles);
-      const typedData = withdrawalsWithProfiles as unknown as Withdrawal[];
-      setWithdrawals(typedData || []);
+      console.log('Successfully fetched withdrawals:', data);
+      setWithdrawals(data || []);
 
       // Log some statistics
-      const pendingCount = (typedData || []).filter(w => w.status === 'pending').length;
-      const totalCount = (typedData || []).length;
+      const pendingCount = (data || []).filter(w => w.status === 'pending').length;
+      const totalCount = (data || []).length;
       console.log(`Admin dashboard loaded ${totalCount} withdrawals (${pendingCount} pending)`);
 
     } catch (error) {
@@ -312,15 +266,13 @@ const AdminDashboard = () => {
     setProcessing(withdrawalId);
     try {
       if (action === 'approve') {
-        // Simply approve the withdrawal - amount was already deducted when request was made
-        const { error } = await supabase
-          .from('withdrawals')
-          .update({
-            status: 'approved',
-            processed_by: user.id,
-            processed_at: new Date().toISOString()
-          })
-          .eq('id', withdrawalId);
+        // Use the new admin function to update withdrawal status
+        const { error } = await supabase.rpc('admin_update_withdrawal_status', {
+          withdrawal_id: withdrawalId,
+          new_status: 'approved',
+          admin_id: user.id,
+          notes: 'Approved by admin'
+        });
 
         if (error) throw error;
 
@@ -349,15 +301,13 @@ const AdminDashboard = () => {
 
         if (refundFeeError) throw refundFeeError;
 
-        // Update withdrawal status to rejected
-        const { error } = await supabase
-          .from('withdrawals')
-          .update({
-            status: 'rejected',
-            processed_by: user.id,
-            processed_at: new Date().toISOString()
-          })
-          .eq('id', withdrawalId);
+        // Use the new admin function to update withdrawal status
+        const { error } = await supabase.rpc('admin_update_withdrawal_status', {
+          withdrawal_id: withdrawalId,
+          new_status: 'rejected',
+          admin_id: user.id,
+          notes: 'Rejected by admin'
+        });
 
         if (error) throw error;
 
@@ -452,7 +402,7 @@ const AdminDashboard = () => {
   // Helper function to get expected payout date
   const getExpectedPayoutDate = (requestDate: string) => {
     const date = new Date(requestDate);
-    date.setDate(date.getDate() + 3);
+    date.setDate(date.getDate() + 7); // Changed to 7 days
     return date.toLocaleDateString();
   };
 
@@ -585,9 +535,10 @@ const AdminDashboard = () => {
                           <TableCell>
                             <div>
                               <p className="font-medium">
-                                {withdrawal.profiles?.first_name || 'Unknown'} {withdrawal.profiles?.last_name || 'User'}
+                                {withdrawal.first_name || 'Unknown'} {withdrawal.last_name || 'User'}
                               </p>
-                              <p className="text-sm text-gray-600">{withdrawal.profiles?.email || 'No email'}</p>
+                              <p className="text-sm text-gray-600">{withdrawal.email || 'No email'}</p>
+                              <p className="text-sm text-gray-600">{withdrawal.phone || 'No phone'}</p>
                               <p className="text-xs text-gray-500">ID: {withdrawal.user_id.substring(0, 8)}...</p>
                             </div>
                           </TableCell>
@@ -620,7 +571,7 @@ const AdminDashboard = () => {
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-blue-600">
-                              {new Date(new Date(withdrawal.created_at).getTime() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                              {new Date(new Date(withdrawal.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -677,7 +628,7 @@ const AdminDashboard = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
+                      <TableHead>User Details</TableHead>
                       <TableHead>Plan</TableHead>
                       <TableHead>Earnings</TableHead>
                       <TableHead>Funding</TableHead>
@@ -694,7 +645,8 @@ const AdminDashboard = () => {
                               {user.first_name} {user.last_name}
                             </p>
                             <p className="text-sm text-gray-600">{user.email}</p>
-                            <p className="text-xs text-gray-500">ID: {user.referral_code}</p>
+                            <p className="text-sm text-gray-600">{user.phone || 'No phone'}</p>
+                            <p className="text-xs text-gray-500">Ref: {user.referral_code}</p>
                           </div>
                         </TableCell>
                         <TableCell>

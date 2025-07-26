@@ -539,6 +539,7 @@ export type Database = {
           email: string
           first_name: string
           last_name: string
+          phone: string
           wallet_earnings: number
           wallet_funding: number
           current_plan: string
@@ -546,6 +547,27 @@ export type Database = {
           is_banned: boolean
           created_at: string
           referral_code: string
+        }[]
+      }
+      admin_get_all_withdrawals: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          user_id: string
+          amount: number
+          fee: number
+          bank_name: string
+          account_number: string
+          account_name: string
+          status: Database["public"]["Enums"]["withdrawal_status"]
+          created_at: string
+          processed_at: string
+          processed_by: string
+          admin_notes: string
+          first_name: string
+          last_name: string
+          email: string
+          phone: string
         }[]
       }
       admin_get_user_count: {
@@ -558,6 +580,15 @@ export type Database = {
           total_earnings: number
           total_funding: number
         }[]
+      }
+      admin_update_withdrawal_status: {
+        Args: {
+          withdrawal_id: string
+          new_status: Database["public"]["Enums"]["withdrawal_status"]
+          admin_id: string
+          notes?: string
+        }
+        Returns: boolean
       }
       can_user_withdraw: {
         Args: { user_uuid: string }
