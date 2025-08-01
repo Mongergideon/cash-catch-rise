@@ -54,6 +54,22 @@ interface Withdrawal {
   admin_notes: string | null;
 }
 
+interface Deposit {
+  id: string;
+  user_id: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  transaction_reference: string | null;
+  status: string;
+  created_at: string;
+  completed_at: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
 interface Transaction {
   id: string;
   type: string;
@@ -76,6 +92,7 @@ const AdminDashboard = () => {
   });
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
@@ -123,6 +140,7 @@ const AdminDashboard = () => {
       fetchDashboardData();
       fetchUsers();
       fetchWithdrawals();
+      fetchDeposits();
       fetchTransactions();
     } catch (error) {
       console.error('Error checking admin access:', error);
@@ -233,6 +251,21 @@ const AdminDashboard = () => {
         variant: "destructive",
         title: "Error",
         description: "Failed to fetch withdrawal requests. Check console for details.",
+      });
+    }
+  };
+
+  const fetchDeposits = async () => {
+    try {
+      const { data, error } = await supabase.rpc('admin_get_all_deposits');
+      if (error) throw error;
+      setDeposits(data || []);
+    } catch (error) {
+      console.error('Error fetching deposits:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load deposits",
       });
     }
   };
@@ -399,6 +432,34 @@ const AdminDashboard = () => {
     }
   };
 
+  const updateUserPlan = async (userId: string, planType: string, isActive: boolean) => {
+    try {
+      const expiry = isActive ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null;
+      
+      const { error } = await supabase.rpc('admin_set_user_plan_status', {
+        target_user_id: userId,
+        new_plan: planType as any,
+        new_expiry: expiry?.toISOString() || null
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `User plan updated successfully`,
+      });
+
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user plan:', error);
+      toast({
+        variant: "destructive",
+        title: "Error", 
+        description: "Failed to update user plan",
+      });
+    }
+  };
+
   // Helper function to get expected payout date
   const getExpectedPayoutDate = (requestDate: string) => {
     const date = new Date(requestDate);
@@ -483,6 +544,7 @@ const AdminDashboard = () => {
         <TabsList>
           <TabsTrigger value="withdrawals">Withdrawal Requests</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
+          <TabsTrigger value="deposits">Deposits</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
         </TabsList>
 
@@ -661,6 +723,16 @@ const AdminDashboard = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
+                            <select 
+                              value={user.current_plan || 'free_trial'}
+                              onChange={(e) => updateUserPlan(user.id, e.target.value, true)}
+                              className="text-xs px-2 py-1 border rounded"
+                            >
+                              <option value="free_trial">Free Trial</option>
+                              <option value="bronze">Bronze</option>
+                              <option value="silver">Silver</option>
+                              <option value="gold">Gold</option>
+                            </select>
                             <Dialog>
                               <DialogTrigger asChild>
                                 <Button
@@ -716,6 +788,55 @@ const AdminDashboard = () => {
                   </TableBody>
                 </Table>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="deposits">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Deposits ({deposits.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {deposits.map((deposit) => (
+                    <TableRow key={deposit.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{deposit.first_name} {deposit.last_name}</p>
+                          <p className="text-sm text-gray-600">{deposit.email}</p>
+                          <p className="text-sm text-gray-600">{deposit.phone}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>₦{deposit.amount.toLocaleString()}</TableCell>
+                      <TableCell className="capitalize">{deposit.payment_method}</TableCell>
+                      <TableCell className="text-xs">{deposit.transaction_reference || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          deposit.status === 'completed' ? 'default' : 
+                          deposit.status === 'pending' ? 'secondary' : 'destructive'
+                        }>
+                          {deposit.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(deposit.created_at).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>

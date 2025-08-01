@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import WelcomePopup from '@/components/WelcomePopup';
 import GameCard from '@/components/GameCard';
+import PlanRenewalBanner from '@/components/PlanRenewalBanner';
 
 interface Profile {
   wallet_earnings: number;
@@ -246,6 +247,8 @@ const Index = () => {
   return (
     <div className="p-6 space-y-6">
       <WelcomePopup isOpen={showWelcome} onClose={handleWelcomeClose} />
+      
+      <PlanRenewalBanner />
 
       {/* Welcome Section */}
       <div className="text-center">
