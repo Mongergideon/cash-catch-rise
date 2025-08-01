@@ -119,6 +119,45 @@ export type Database = {
           },
         ]
       }
+      deposits: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          metadata: Json | null
+          payment_method: string | null
+          status: string | null
+          transaction_reference: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          completed_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_method?: string | null
+          status?: string | null
+          transaction_reference?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_method?: string | null
+          status?: string | null
+          transaction_reference?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       game_earnings: {
         Row: {
           amount: number
@@ -211,9 +250,12 @@ export type Database = {
           next_withdraw_at: string | null
           next_withdrawal_allowed_at: string | null
           phone: string | null
+          plan_before_expiry: Database["public"]["Enums"]["plan_type"] | null
           plan_expires_at: string | null
           referral_code: string | null
           referred_by: string | null
+          renewal_deadline: string | null
+          renewal_price: number | null
           updated_at: string | null
           wallet_earnings: number | null
           wallet_funding: number | null
@@ -229,9 +271,12 @@ export type Database = {
           next_withdraw_at?: string | null
           next_withdrawal_allowed_at?: string | null
           phone?: string | null
+          plan_before_expiry?: Database["public"]["Enums"]["plan_type"] | null
           plan_expires_at?: string | null
           referral_code?: string | null
           referred_by?: string | null
+          renewal_deadline?: string | null
+          renewal_price?: number | null
           updated_at?: string | null
           wallet_earnings?: number | null
           wallet_funding?: number | null
@@ -247,9 +292,12 @@ export type Database = {
           next_withdraw_at?: string | null
           next_withdrawal_allowed_at?: string | null
           phone?: string | null
+          plan_before_expiry?: Database["public"]["Enums"]["plan_type"] | null
           plan_expires_at?: string | null
           referral_code?: string | null
           referred_by?: string | null
+          renewal_deadline?: string | null
+          renewal_price?: number | null
           updated_at?: string | null
           wallet_earnings?: number | null
           wallet_funding?: number | null
@@ -532,6 +580,24 @@ export type Database = {
         Args: { user_uuid: string; banned: boolean }
         Returns: boolean
       }
+      admin_get_all_deposits: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          user_id: string
+          amount: number
+          currency: string
+          payment_method: string
+          transaction_reference: string
+          status: string
+          created_at: string
+          completed_at: string
+          first_name: string
+          last_name: string
+          email: string
+          phone: string
+        }[]
+      }
       admin_get_all_users: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -581,6 +647,15 @@ export type Database = {
           total_funding: number
         }[]
       }
+      admin_set_user_plan_status: {
+        Args: {
+          target_user_id: string
+          new_plan: Database["public"]["Enums"]["plan_type"]
+          new_expiry?: string
+          admin_user_id?: string
+        }
+        Returns: boolean
+      }
       admin_update_withdrawal_status: {
         Args: {
           withdrawal_id: string
@@ -592,6 +667,10 @@ export type Database = {
       }
       can_user_withdraw: {
         Args: { user_uuid: string }
+        Returns: boolean
+      }
+      process_plan_renewal: {
+        Args: { user_uuid: string; payment_reference: string }
         Returns: boolean
       }
       update_next_withdrawal_time: {
