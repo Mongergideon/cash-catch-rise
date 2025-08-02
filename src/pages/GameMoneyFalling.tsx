@@ -25,6 +25,9 @@ const GameMoneyFalling = () => {
   const [sessionEarnings, setSessionEarnings] = useState(0);
   const [fallingMoney, setFallingMoney] = useState<FallingMoney[]>([]);
   const [tapCount, setTapCount] = useState(0);
+  const [dailyPlays, setDailyPlays] = useState(0);
+  const [dailyLimit, setDailyLimit] = useState(5);
+  const [canPlay, setCanPlay] = useState(true);
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const gameLoopRef = useRef<NodeJS.Timeout>();
   const spawnIntervalRef = useRef<NodeJS.Timeout>();
@@ -32,6 +35,12 @@ const GameMoneyFalling = () => {
   const moneyValues = [10, 20, 50, 100, 200, 500];
   const maxTapsPerHour = 500;
   const dailyCap = 3000; // Based on current plan
+
+  useEffect(() => {
+    if (user) {
+      checkDailyPlays();
+    }
+  }, [user]);
 
   useEffect(() => {
     if (gameStarted && !gamePaused) {
@@ -47,6 +56,44 @@ const GameMoneyFalling = () => {
       stopMoneySpawning();
     };
   }, [gameStarted, gamePaused]);
+
+  const checkDailyPlays = async () => {
+    if (!user) return;
+
+    try {
+      // Check daily plays
+      const { data: playsData } = await supabase
+        .from('daily_game_plays')
+        .select('plays_count')
+        .eq('user_id', user.id)
+        .eq('game_type', 'money_falling')
+        .eq('date', new Date().toISOString().split('T')[0])
+        .single();
+
+      // Get user's plan limit
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('current_plan')
+        .eq('id', user.id)
+        .single();
+
+      if (profileData) {
+        const { data: planData } = await supabase
+          .from('plans')
+          .select('daily_play_limit')
+          .eq('type', profileData.current_plan)
+          .single();
+
+        setDailyLimit(planData?.daily_play_limit || 5);
+      }
+
+      const currentPlays = playsData?.plays_count || 0;
+      setDailyPlays(currentPlays);
+      setCanPlay(currentPlays < dailyLimit);
+    } catch (error) {
+      console.error('Error checking daily plays:', error);
+    }
+  };
 
   const startGameLoop = () => {
     gameLoopRef.current = setInterval(() => {
@@ -199,6 +246,26 @@ const GameMoneyFalling = () => {
     setGamePaused(!gamePaused);
   };
 
+  const startGame = async () => {
+    if (!canPlay) {
+      toast({
+        variant: "destructive",
+        title: "Daily Limit Reached",
+        description: `You can only play ${dailyLimit} times per day with your current plan.`,
+      });
+      return;
+    }
+
+    // Increment play count
+    await supabase.rpc('increment_game_play', {
+      user_uuid: user?.id,
+      game_name: 'money_falling'
+    });
+
+    setGameStarted(true);
+    checkDailyPlays();
+  };
+
   const resetGame = () => {
     setGameStarted(false);
     setGamePaused(false);
@@ -312,18 +379,24 @@ const GameMoneyFalling = () => {
                     <li>• Earn ₦10 - ₦500 per tap</li>
                     <li>• Daily cap: ₦{dailyCap.toLocaleString()}</li>
                     <li>• Max {maxTapsPerHour} taps per hour</li>
+                    <li>• Daily plays: {dailyPlays}/{dailyLimit}</li>
                   </ul>
                 </div>
                 <Button
-                  onClick={() => setGameStarted(true)}
+                  onClick={startGame}
                   className="w-full gradient-primary text-white text-lg py-3"
-                  disabled={!user}
+                  disabled={!user || !canPlay}
                 >
-                  {user ? 'Start Game' : 'Login Required'}
+                  {!user ? 'Login Required' : !canPlay ? 'Daily Limit Reached' : 'Start Game'}
                 </Button>
                 {!user && (
                   <p className="text-sm text-red-600 text-center">
                     Please log in to play games and earn rewards.
+                  </p>
+                )}
+                {!canPlay && user && (
+                  <p className="text-sm text-red-600 text-center">
+                    You've reached your daily play limit for your current plan.
                   </p>
                 )}
               </CardContent>

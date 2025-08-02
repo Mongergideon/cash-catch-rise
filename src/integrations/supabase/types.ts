@@ -729,7 +729,12 @@ export type Database = {
       }
     }
     Enums: {
-      game_type: "money_falling" | "coin_runner" | "spin_wheel" | "memory_flip"
+      game_type:
+        | "money_falling"
+        | "coin_runner"
+        | "spin_wheel"
+        | "memory_flip"
+        | "runner_3d"
       plan_type:
         | "free_trial"
         | "starter"
@@ -873,7 +878,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      game_type: ["money_falling", "coin_runner", "spin_wheel", "memory_flip"],
+      game_type: [
+        "money_falling",
+        "coin_runner",
+        "spin_wheel",
+        "memory_flip",
+        "runner_3d",
+      ],
       plan_type: [
         "free_trial",
         "starter",

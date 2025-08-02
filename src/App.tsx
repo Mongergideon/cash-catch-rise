@@ -13,6 +13,7 @@ import GameMoneyFalling from "./pages/GameMoneyFalling";
 import CoinRunner from "./pages/CoinRunner";
 import SpinWheel from "./pages/SpinWheel";
 import MemoryFlip from "./pages/MemoryFlip";
+import Runner3D from "./pages/Runner3D";
 import Store from "./pages/Store";
 import Referral from "./pages/Referral";
 import Settings from "./pages/Settings";
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="game/coin-runner" element={<CoinRunner />} />
               <Route path="game/spin-wheel" element={<SpinWheel />} />
               <Route path="game/memory-flip" element={<MemoryFlip />} />
+              <Route path="game/runner-3d" element={<Runner3D />} />
               <Route path="store" element={<Store />} />
               <Route path="referral" element={<Referral />} />
               <Route path="settings" element={<Settings />} />

@@ -40,10 +40,10 @@ const PlanRenewalBanner = () => {
         const distance = deadline - now;
 
         if (distance > 0) {
+          const days = Math.floor(distance / (1000 * 60 * 60 * 24));
           const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
           const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-          const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-          setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+          setTimeLeft(`${days}d ${hours}h ${minutes}m`);
         } else {
           setTimeLeft('Expired');
           clearInterval(timer);
