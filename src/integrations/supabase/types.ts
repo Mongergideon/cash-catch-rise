@@ -119,6 +119,36 @@ export type Database = {
           },
         ]
       }
+      daily_game_plays: {
+        Row: {
+          created_at: string | null
+          date: string
+          game_type: string
+          id: string
+          plays_count: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string
+          game_type: string
+          id?: string
+          plays_count?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          game_type?: string
+          id?: string
+          plays_count?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       deposits: {
         Row: {
           amount: number
@@ -201,6 +231,7 @@ export type Database = {
           can_withdraw: boolean
           cost: number
           created_at: string | null
+          daily_play_limit: number | null
           duration_days: number
           games_unlocked: number | null
           id: string
@@ -214,6 +245,7 @@ export type Database = {
           can_withdraw: boolean
           cost: number
           created_at?: string | null
+          daily_play_limit?: number | null
           duration_days: number
           games_unlocked?: number | null
           id?: string
@@ -227,6 +259,7 @@ export type Database = {
           can_withdraw?: boolean
           cost?: number
           created_at?: string | null
+          daily_play_limit?: number | null
           duration_days?: number
           games_unlocked?: number | null
           id?: string
@@ -665,8 +698,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_user_play_game: {
+        Args: { user_uuid: string; game_name: string }
+        Returns: boolean
+      }
       can_user_withdraw: {
         Args: { user_uuid: string }
+        Returns: boolean
+      }
+      increment_game_play: {
+        Args: { user_uuid: string; game_name: string }
         Returns: boolean
       }
       process_plan_renewal: {
