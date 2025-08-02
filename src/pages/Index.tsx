@@ -234,13 +234,22 @@ const Index = () => {
       requiredPlan: 'Bronze Plan'
     },
     {
+      title: '3D Runner',
+      description: '3D mobile running game with store',
+      icon: <Brain className="h-8 w-8 text-cyan-500" />,
+      route: '/game/runner-3d',
+      color: 'from-cyan-400 to-cyan-600',
+      gameNumber: 4,
+      requiredPlan: 'Silver Plan'
+    },
+    {
       title: 'Memory Flip',
       description: 'Match Naira pairs under timer',
       icon: <Brain className="h-8 w-8 text-green-500" />,
       route: '/game/memory-flip',
       color: 'from-green-400 to-green-600',
-      gameNumber: 4,
-      requiredPlan: 'Silver Plan'
+      gameNumber: 5,
+      requiredPlan: 'Gold Plan'
     }
   ];
 

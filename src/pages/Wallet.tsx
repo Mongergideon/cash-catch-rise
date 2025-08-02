@@ -121,16 +121,22 @@ const Wallet = () => {
   const fetchTransactions = async () => {
     try {
       const { data, error } = await supabase
-        .from('transactions')
+        .from('deposits')
         .select('*')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
-      setTransactions(data || []);
+      setTransactions(data?.map(deposit => ({
+        id: deposit.id,
+        type: 'deposit',
+        amount: deposit.amount,
+        description: `Deposit via ${deposit.payment_method}`,
+        created_at: deposit.created_at
+      })) || []);
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error('Error fetching deposits:', error);
     }
   };
 
