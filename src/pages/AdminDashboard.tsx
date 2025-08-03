@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, Wallet, TrendingUp, AlertCircle, Check, X, LogOut, Edit, Ban, UserPlus } from 'lucide-react';
+import { Users, Wallet, TrendingUp, AlertCircle, Check, X, LogOut, Edit, Ban, UserPlus, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +33,9 @@ interface UserProfile {
   is_banned: boolean;
   created_at: string;
   referral_code: string;
+  renewal_deadline?: string | null;
+  renewal_price?: number | null;
+  plan_before_expiry?: string | null;
 }
 
 interface Withdrawal {
@@ -99,6 +102,10 @@ const AdminDashboard = () => {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [walletAmount, setWalletAmount] = useState('');
   const [walletType, setWalletType] = useState<'funding' | 'earnings'>('funding');
+  const [promoDialogOpen, setPromoDialogOpen] = useState(false);
+  const [selectedUserForPromo, setSelectedUserForPromo] = useState<UserProfile | null>(null);
+  const [promoPrice, setPromoPrice] = useState('3800');
+  const [promoPlan, setPromoPlan] = useState<'bronze' | 'silver' | 'gold' | 'platinum'>('bronze');
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -293,7 +300,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const processWithdrawal = async (withdrawalId: string, action: 'approve' | 'reject', withdrawal: Withdrawal) => {
+  const processWithdrawal = async (withdrawalId: string, action: 'approve' | 'reject' | 'processing', withdrawal: Withdrawal) => {
     if (!user) return;
 
     setProcessing(withdrawalId);
@@ -312,6 +319,21 @@ const AdminDashboard = () => {
         toast({
           title: "Success",
           description: `Withdrawal approved successfully`,
+        });
+      } else if (action === 'processing') {
+        // Set withdrawal to processing status
+        const { error } = await supabase.rpc('admin_update_withdrawal_status', {
+          withdrawal_id: withdrawalId,
+          new_status: 'processing',
+          admin_id: user.id,
+          notes: 'Set to processing by admin'
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: `Withdrawal set to processing`,
         });
       } else {
         // On rejection, refund both earnings and fee
@@ -460,6 +482,45 @@ const AdminDashboard = () => {
     }
   };
 
+  const setupUserPromo = async () => {
+    if (!selectedUserForPromo) return;
+
+    try {
+      const renewalDeadline = new Date();
+      renewalDeadline.setDate(renewalDeadline.getDate() + 3); // 3 days from now
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          renewal_deadline: renewalDeadline.toISOString(),
+          renewal_price: parseFloat(promoPrice),
+          plan_before_expiry: promoPlan,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedUserForPromo.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Promo set up for ${selectedUserForPromo.first_name} ${selectedUserForPromo.last_name}`,
+      });
+
+      setPromoDialogOpen(false);
+      setSelectedUserForPromo(null);
+      setPromoPrice('3800');
+      setPromoPlan('bronze');
+      fetchUsers();
+    } catch (error) {
+      console.error('Error setting up promo:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to set up promo",
+      });
+    }
+  };
+
   // Helper function to get expected payout date
   const getExpectedPayoutDate = (requestDate: string) => {
     const date = new Date(requestDate);
@@ -544,6 +605,7 @@ const AdminDashboard = () => {
         <TabsList>
           <TabsTrigger value="withdrawals">Withdrawal Requests</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
+          <TabsTrigger value="promos">Promo Management</TabsTrigger>
           <TabsTrigger value="deposits">Deposits</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
         </TabsList>
@@ -637,29 +699,40 @@ const AdminDashboard = () => {
                             </span>
                           </TableCell>
                           <TableCell>
-                            {withdrawal.status === 'pending' && (
+                             {withdrawal.status === 'pending' && (
                               <div className="flex gap-2">
                                 <Button
                                   size="sm"
                                   onClick={() => processWithdrawal(withdrawal.id, 'approve', withdrawal)}
                                   disabled={processing === withdrawal.id}
                                   className="bg-green-600 hover:bg-green-700"
+                                  title="Approve withdrawal"
                                 >
                                   <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => processWithdrawal(withdrawal.id, 'processing', withdrawal)}
+                                  disabled={processing === withdrawal.id}
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                  title="Set to processing"
+                                >
+                                  <Clock className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="destructive"
                                   onClick={() => processWithdrawal(withdrawal.id, 'reject', withdrawal)}
                                   disabled={processing === withdrawal.id}
+                                  title="Reject withdrawal"
                                 >
                                   <X className="h-4 w-4" />
                                 </Button>
                               </div>
                             )}
                             {withdrawal.status !== 'pending' && (
-                              <span className="text-sm text-gray-500">
-                                {withdrawal.status === 'approved' ? 'Approved' : 'Rejected'}
+                              <span className="text-sm text-gray-500 capitalize">
+                                {withdrawal.status}
                               </span>
                             )}
                           </TableCell>
@@ -735,13 +808,13 @@ const AdminDashboard = () => {
                             </select>
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setSelectedUser(user)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                                 <Button
+                                   size="sm"
+                                   variant="outline"
+                                   onClick={() => setSelectedUser(user)}
+                                 >
+                                   <Edit className="h-4 w-4" />
+                                 </Button>
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
@@ -788,6 +861,132 @@ const AdminDashboard = () => {
                   </TableBody>
                 </Table>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="promos">
+          <Card>
+            <CardHeader>
+              <CardTitle>Promo Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <p className="text-gray-600">Set up promotional offers for users with expired plans</p>
+                  <Dialog open={promoDialogOpen} onOpenChange={setPromoDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Setup User Promo
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Setup User Promo</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Select User</Label>
+                          <select
+                            value={selectedUserForPromo?.id || ''}
+                            onChange={(e) => {
+                              const user = users.find(u => u.id === e.target.value);
+                              setSelectedUserForPromo(user || null);
+                            }}
+                            className="w-full p-2 border rounded"
+                          >
+                            <option value="">Select a user...</option>
+                            {users.map((user) => (
+                              <option key={user.id} value={user.id}>
+                                {user.first_name} {user.last_name} ({user.email})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label>Promo Price (₦)</Label>
+                          <Input
+                            type="number"
+                            value={promoPrice}
+                            onChange={(e) => setPromoPrice(e.target.value)}
+                            placeholder="3800"
+                          />
+                        </div>
+                        <div>
+                          <Label>Plan to Activate</Label>
+                          <select
+                            value={promoPlan}
+                            onChange={(e) => setPromoPlan(e.target.value as any)}
+                            className="w-full p-2 border rounded"
+                          >
+                            <option value="bronze">Bronze</option>
+                            <option value="silver">Silver</option>
+                            <option value="gold">Gold</option>
+                            <option value="platinum">Platinum</option>
+                          </select>
+                        </div>
+                        <Button 
+                          onClick={setupUserPromo} 
+                          className="w-full"
+                          disabled={!selectedUserForPromo}
+                        >
+                          Setup Promo (3 days countdown)
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">How Promos Work:</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• Select a user and set a promotional price for plan renewal</li>
+                    <li>• Users will see a "Special Promo" banner instead of regular renewal</li>
+                    <li>• Promo expires after 3 days from setup</li>
+                    <li>• Once payment is made, their selected plan becomes active for 30 days</li>
+                  </ul>
+                </div>
+                
+                <div>
+                  <h4 className="font-semibold mb-2">Users with Active Promos:</h4>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Promo Price</TableHead>
+                        <TableHead>Plan</TableHead>
+                        <TableHead>Expires</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.filter(user => {
+                        // Show users with renewal_deadline set (active promos)
+                        return user.renewal_deadline;
+                      }).map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{user.first_name} {user.last_name}</p>
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>₦{user.renewal_price?.toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{user.plan_before_expiry}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {user.renewal_deadline ? new Date(user.renewal_deadline).toLocaleDateString() : 'N/A'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {users.filter(user => user.renewal_deadline).length === 0 && (
+                    <p className="text-gray-500 text-center py-4">No active promos found</p>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

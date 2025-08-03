@@ -17,6 +17,7 @@ interface Profile {
   renewal_deadline: string | null;
   renewal_price: number;
   plan_before_expiry: string | null;
+  plan_expires_at: string | null;
 }
 
 const PlanRenewalBanner = () => {
@@ -60,7 +61,7 @@ const PlanRenewalBanner = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('renewal_deadline, renewal_price, plan_before_expiry')
+        .select('renewal_deadline, renewal_price, plan_before_expiry, plan_expires_at')
         .eq('id', user?.id)
         .single();
 
@@ -148,10 +149,16 @@ const PlanRenewalBanner = () => {
     }
   };
 
-  // Don't show banner if no renewal deadline or if expired
-  if (!profile?.renewal_deadline || timeLeft === 'Expired') {
+  // Show banner if renewal deadline exists OR if plan has expired (for promo)
+  const planExpired = profile?.plan_expires_at && new Date(profile.plan_expires_at) <= new Date();
+  const shouldShowBanner = profile?.renewal_deadline || planExpired;
+  
+  if (!shouldShowBanner) {
     return null;
   }
+
+  // Determine if this is a promo for expired users
+  const isPromo = planExpired && !profile?.renewal_deadline;
 
   return (
     <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 mb-6">
@@ -160,28 +167,35 @@ const PlanRenewalBanner = () => {
           <div className="flex items-center space-x-3">
             <AlertTriangle className="text-orange-500" size={24} />
             <div>
-              <h3 className="font-semibold text-orange-900">Plan Renewal Required</h3>
+              <h3 className="font-semibold text-orange-900">
+                {isPromo ? 'Special Promo!' : 'Plan Renewal Required'}
+              </h3>
               <p className="text-sm text-orange-700">
-                Your plan has expired. Renew now for only ₦{profile.renewal_price?.toLocaleString()} to continue earning!
+                {isPromo 
+                  ? `Your plan has expired. Get back to earning with our special promo for only ₦${profile.renewal_price?.toLocaleString()}!`
+                  : `Your plan has expired. Renew now for only ₦${profile.renewal_price?.toLocaleString()} to continue earning!`
+                }
               </p>
             </div>
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="text-center">
-              <div className="flex items-center space-x-2 text-orange-600">
-                <Clock size={16} />
-                <span className="font-mono text-sm font-semibold">{timeLeft}</span>
+            {!isPromo && (
+              <div className="text-center">
+                <div className="flex items-center space-x-2 text-orange-600">
+                  <Clock size={16} />
+                  <span className="font-mono text-sm font-semibold">{timeLeft}</span>
+                </div>
+                <p className="text-xs text-orange-500">Time left</p>
               </div>
-              <p className="text-xs text-orange-500">Time left</p>
-            </div>
+            )}
             
             <Button
               onClick={handleRenewal}
               disabled={processing}
               className="bg-orange-500 hover:bg-orange-600 text-white"
             >
-              {processing ? 'Processing...' : 'Renew Now'}
+              {processing ? 'Processing...' : (isPromo ? 'Get Promo' : 'Renew Now')}
             </Button>
           </div>
         </div>

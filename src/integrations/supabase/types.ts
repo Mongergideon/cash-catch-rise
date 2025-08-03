@@ -750,7 +750,12 @@ export type Database = {
         | "referral_earning"
         | "daily_bonus"
         | "withdrawal_fee"
-      withdrawal_status: "pending" | "approved" | "rejected" | "completed"
+      withdrawal_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "completed"
+        | "processing"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -902,7 +907,13 @@ export const Constants = {
         "daily_bonus",
         "withdrawal_fee",
       ],
-      withdrawal_status: ["pending", "approved", "rejected", "completed"],
+      withdrawal_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "completed",
+        "processing",
+      ],
     },
   },
 } as const
