@@ -3,39 +3,47 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Enhanced design system for Cashing Money Falling */
+/* Enhanced design system for Black/Gold/Pink theme */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 4%; /* Dark black */
+    --foreground: 0 0% 95%; /* Light gray for text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 8%; /* Slightly lighter black for cards */
+    --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 213 100% 32%; /* Blue #0057A3 */
-    --primary-foreground: 0 0% 100%;
+    --primary: 45 100% 50%; /* Gold #FFD700 */
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 132 45% 68%; /* Light Green #85D393 */
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 330 100% 71%; /* Pink #FF69B4 */
+    --secondary-foreground: 0 0% 0%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 132 45% 68%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 330 100% 71%; /* Pink accent */
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 213 100% 32%;
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 45 100% 50%; /* Gold ring */
 
     --radius: 0.75rem;
+
+    /* Custom theme colors */
+    --gold: 45 100% 50%;
+    --gold-muted: 45 80% 40%;
+    --pink: 330 100% 71%;
+    --pink-muted: 330 80% 60%;
+    --black-light: 0 0% 8%;
+    --black-lighter: 0 0% 12%;
   }
 }
 
@@ -88,15 +96,63 @@
 
 /* Gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(135deg, #0057A3 0%, #0066CC 100%);
+  background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-muted)) 100%);
 }
 
 .gradient-secondary {
-  background: linear-gradient(135deg, #85D393 0%, #A3E4B0 100%);
+  background: linear-gradient(135deg, hsl(var(--pink)) 0%, hsl(var(--pink-muted)) 100%);
 }
 
 .gradient-gold {
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-muted)) 100%);
+}
+
+.gradient-dark {
+  background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--black-light)) 100%);
+}
+
+/* New animations */
+@keyframes goldGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px hsl(var(--gold) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px hsl(var(--gold) / 0.6), 0 0 30px hsl(var(--gold) / 0.3);
+  }
+}
+
+@keyframes pinkPulse {
+  0%, 100% {
+    background-color: hsl(var(--pink) / 0.1);
+  }
+  50% {
+    background-color: hsl(var(--pink) / 0.2);
+  }
+}
+
+.hover-gold-glow:hover {
+  transform: scale(1.05);
+  animation: goldGlow 2s infinite;
+  transition: transform 0.2s ease-in-out;
+}
+
+.pink-pulse {
+  animation: pinkPulse 2s infinite;
+}
+
+.slide-fade-in {
+  animation: slide-fade-in 0.3s ease-out;
+}
+
+@keyframes slide-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Money themed elements */

@@ -14,8 +14,13 @@ import CoinRunner from "./pages/CoinRunner";
 import SpinWheel from "./pages/SpinWheel";
 import MemoryFlip from "./pages/MemoryFlip";
 import Runner3D from "./pages/Runner3D";
+import Ludo from "./pages/Ludo";
+import Blackjack from "./pages/Blackjack";
+import SnakeLeader from "./pages/SnakeLeader";
 import Store from "./pages/Store";
 import Referral from "./pages/Referral";
+import Notifications from "./pages/Notifications";
+import Tasks from "./pages/Tasks";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import AdminAuth from "./pages/AdminAuth";
@@ -44,8 +49,13 @@ const App = () => (
               <Route path="game/spin-wheel" element={<SpinWheel />} />
               <Route path="game/memory-flip" element={<MemoryFlip />} />
               <Route path="game/runner-3d" element={<Runner3D />} />
+              <Route path="game/ludo" element={<Ludo />} />
+              <Route path="game/blackjack" element={<Blackjack />} />
+              <Route path="game/snake-leader" element={<SnakeLeader />} />
               <Route path="store" element={<Store />} />
               <Route path="referral" element={<Referral />} />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="tasks" element={<Tasks />} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
