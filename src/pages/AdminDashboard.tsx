@@ -154,6 +154,7 @@ const AdminDashboard = () => {
       fetchWithdrawals();
       fetchDeposits();
       fetchTransactions();
+      fetchMaintenanceMode();
     } catch (error) {
       console.error('Error checking admin access:', error);
       navigate('/admin');
@@ -546,8 +547,15 @@ const AdminDashboard = () => {
     }
 
     try {
-      // Here you would typically save notifications to the database
-      // For now, we'll just show a success message
+      const { error } = await supabase.rpc('admin_send_notification', {
+        user_ids: selectedUsersForNotification,
+        notification_title: notificationTitle,
+        notification_message: notificationMessage,
+        notification_type: 'info'
+      });
+
+      if (error) throw error;
+
       toast({
         title: "Success",
         description: `Notification sent to ${selectedUsersForNotification.length} user(s)`,
@@ -566,9 +574,28 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchMaintenanceMode = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_maintenance_mode');
+      if (error) throw error;
+      
+      const maintenanceData = data as { enabled?: boolean; message?: string };
+      setIsMaintenanceMode(maintenanceData?.enabled || false);
+      setMaintenanceMessage(maintenanceData?.message || '');
+    } catch (error) {
+      console.error('Error fetching maintenance mode:', error);
+    }
+  };
+
   const toggleMaintenanceMode = async () => {
     try {
-      // Here you would typically save maintenance mode settings to database
+      const { error } = await supabase.rpc('admin_set_maintenance_mode', {
+        enabled: !isMaintenanceMode,
+        custom_message: maintenanceMessage || null
+      });
+
+      if (error) throw error;
+
       setIsMaintenanceMode(!isMaintenanceMode);
       
       toast({

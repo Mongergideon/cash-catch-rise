@@ -84,6 +84,30 @@ export type Database = {
           },
         ]
       }
+      app_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       daily_bonus: {
         Row: {
           amount: number
@@ -298,6 +322,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          title: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       plans: {
         Row: {
@@ -753,6 +810,19 @@ export type Database = {
           total_funding: number
         }[]
       }
+      admin_send_notification: {
+        Args: {
+          user_ids: string[]
+          notification_title: string
+          notification_message: string
+          notification_type?: string
+        }
+        Returns: boolean
+      }
+      admin_set_maintenance_mode: {
+        Args: { enabled: boolean; custom_message?: string }
+        Returns: boolean
+      }
       admin_set_user_plan_status: {
         Args: {
           target_user_id: string
@@ -778,6 +848,10 @@ export type Database = {
       can_user_withdraw: {
         Args: { user_uuid: string }
         Returns: boolean
+      }
+      get_maintenance_mode: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       increment_game_play: {
         Args: { user_uuid: string; game_name: string }

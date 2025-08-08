@@ -5,68 +5,92 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Notification {
   id: string;
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
-  timestamp: Date;
-  read: boolean;
+  created_at: string;
+  is_read: boolean;
 }
 
 const Notifications = () => {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'Welcome Bonus',
-      message: 'You received ₦500 welcome bonus! Start playing games to earn more.',
-      type: 'success',
-      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
-      read: false
-    },
-    {
-      id: '2',
-      title: 'New Game Available',
-      message: 'Blackjack 21 is now available! Try your luck at the classic card game.',
-      type: 'info',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-      read: false
-    },
-    {
-      id: '3',
-      title: 'Daily Limit Reached',
-      message: 'You have reached your daily play limit. Upgrade your plan for unlimited plays.',
-      type: 'warning',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-      read: true
-    },
-    {
-      id: '4',
-      title: 'Withdrawal Processed',
-      message: 'Your withdrawal of ₦2,000 has been successfully processed.',
-      type: 'success',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
-      read: true
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
     }
-  ]);
+  }, [user]);
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
+  const fetchNotifications = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setNotifications((data || []) as Notification[]);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === id ? { ...notif, is_read: true } : notif
+        )
+      );
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const markAllAsRead = async () => {
+    try {
+      const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+      
+      if (unreadIds.length > 0) {
+        const { error } = await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .in('id', unreadIds)
+          .eq('user_id', user?.id);
+
+        if (error) throw error;
+
+        setNotifications(prev => 
+          prev.map(notif => ({ ...notif, is_read: true }))
+        );
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -85,6 +109,14 @@ const Notifications = () => {
       default: return 'ℹ️';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center">
+        <p>Loading notifications...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4">
@@ -141,7 +173,7 @@ const Notifications = () => {
               <Card 
                 key={notification.id}
                 className={`cursor-pointer transition-all hover:shadow-lg slide-fade-in ${
-                  !notification.read ? 'ring-1 ring-primary' : ''
+                  !notification.is_read ? 'ring-1 ring-primary' : ''
                 }`}
                 onClick={() => markAsRead(notification.id)}
               >
@@ -152,15 +184,15 @@ const Notifications = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
-                        <h3 className={`font-medium ${!notification.read ? 'text-primary' : ''}`}>
+                        <h3 className={`font-medium ${!notification.is_read ? 'text-primary' : ''}`}>
                           {notification.title}
                         </h3>
                         <div className="flex items-center space-x-2 ml-4">
-                          {!notification.read && (
+                          {!notification.is_read && (
                             <div className="w-2 h-2 bg-primary rounded-full" />
                           )}
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
+                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                           </span>
                         </div>
                       </div>
