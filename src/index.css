@@ -7,6 +7,46 @@
 
 @layer base {
   :root {
+    --background: 0 0% 98%; /* Light background for better visibility */
+    --foreground: 0 0% 5%; /* Dark text for contrast */
+
+    --card: 0 0% 100%; /* White cards */
+    --card-foreground: 0 0% 5%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 5%;
+
+    --primary: 45 100% 50%; /* Gold #FFD700 */
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 330 100% 71%; /* Pink #FF69B4 */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 330 100% 71%; /* Pink accent */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 100%;
+    --ring: 45 100% 50%; /* Gold ring */
+
+    --radius: 0.75rem;
+
+    /* Custom theme colors */
+    --gold: 45 100% 50%;
+    --gold-muted: 45 80% 40%;
+    --pink: 330 100% 71%;
+    --pink-muted: 330 80% 60%;
+    --black-light: 0 0% 8%;
+    --black-lighter: 0 0% 12%;
+  }
+
+  .dark {
     --background: 0 0% 4%; /* Dark black */
     --foreground: 0 0% 95%; /* Light gray for text */
 
@@ -35,9 +75,7 @@
     --input: 0 0% 15%;
     --ring: 45 100% 50%; /* Gold ring */
 
-    --radius: 0.75rem;
-
-    /* Custom theme colors */
+    /* Custom theme colors for dark mode */
     --gold: 45 100% 50%;
     --gold-muted: 45 80% 40%;
     --pink: 330 100% 71%;

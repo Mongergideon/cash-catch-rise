@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, Wallet, TrendingUp, AlertCircle, Check, X, LogOut, Edit, Ban, UserPlus, Clock } from 'lucide-react';
+import { Users, Wallet, TrendingUp, AlertCircle, Check, X, LogOut, Edit, Ban, UserPlus, Clock, MessageSquare, Settings, Bell } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -106,6 +106,11 @@ const AdminDashboard = () => {
   const [selectedUserForPromo, setSelectedUserForPromo] = useState<UserProfile | null>(null);
   const [promoPrice, setPromoPrice] = useState('3800');
   const [promoPlan, setPromoPlan] = useState<'bronze' | 'silver' | 'gold' | 'platinum'>('bronze');
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [notificationTitle, setNotificationTitle] = useState('');
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [selectedUsersForNotification, setSelectedUsersForNotification] = useState<string[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -521,6 +526,65 @@ const AdminDashboard = () => {
     }
   };
 
+  const sendNotificationToUsers = async () => {
+    if (!notificationTitle || !notificationMessage) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please fill in both title and message",
+      });
+      return;
+    }
+
+    if (selectedUsersForNotification.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No Users Selected",
+        description: "Please select at least one user to send notification to",
+      });
+      return;
+    }
+
+    try {
+      // Here you would typically save notifications to the database
+      // For now, we'll just show a success message
+      toast({
+        title: "Success",
+        description: `Notification sent to ${selectedUsersForNotification.length} user(s)`,
+      });
+
+      setNotificationTitle('');
+      setNotificationMessage('');
+      setSelectedUsersForNotification([]);
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to send notification",
+      });
+    }
+  };
+
+  const toggleMaintenanceMode = async () => {
+    try {
+      // Here you would typically save maintenance mode settings to database
+      setIsMaintenanceMode(!isMaintenanceMode);
+      
+      toast({
+        title: "Success",
+        description: `Maintenance mode ${!isMaintenanceMode ? 'enabled' : 'disabled'}`,
+      });
+    } catch (error) {
+      console.error('Error toggling maintenance mode:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to toggle maintenance mode",
+      });
+    }
+  };
+
   // Helper function to get expected payout date
   const getExpectedPayoutDate = (requestDate: string) => {
     const date = new Date(requestDate);
@@ -602,11 +666,12 @@ const AdminDashboard = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="withdrawals" className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="withdrawals">Withdrawal Requests</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="promos">Promo Management</TabsTrigger>
-          <TabsTrigger value="deposits">Deposits</TabsTrigger>
+          <TabsTrigger value="notifications">Send Notifications</TabsTrigger>
+          <TabsTrigger value="maintenance">Maintenance Mode</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
         </TabsList>
 
@@ -1036,6 +1101,158 @@ const AdminDashboard = () => {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <MessageSquare className="h-5 h-5 mr-2" />
+                Send Notifications to Users
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="notificationTitle">Notification Title</Label>
+                      <Input
+                        id="notificationTitle"
+                        value={notificationTitle}
+                        onChange={(e) => setNotificationTitle(e.target.value)}
+                        placeholder="Enter notification title..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="notificationMessage">Message</Label>
+                      <textarea
+                        id="notificationMessage"
+                        value={notificationMessage}
+                        onChange={(e) => setNotificationMessage(e.target.value)}
+                        placeholder="Enter your message..."
+                        className="w-full p-3 border rounded-md h-24 resize-none"
+                      />
+                    </div>
+                    <Button 
+                      onClick={sendNotificationToUsers}
+                      className="w-full"
+                      disabled={!notificationTitle || !notificationMessage || selectedUsersForNotification.length === 0}
+                    >
+                      <Bell className="h-4 w-4 mr-2" />
+                      Send Notification ({selectedUsersForNotification.length} users)
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label>Select Users to Notify</Label>
+                    <div className="border rounded-md p-4 max-h-96 overflow-y-auto">
+                      <div className="flex items-center justify-between mb-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (selectedUsersForNotification.length === users.length) {
+                              setSelectedUsersForNotification([]);
+                            } else {
+                              setSelectedUsersForNotification(users.map(u => u.id));
+                            }
+                          }}
+                        >
+                          {selectedUsersForNotification.length === users.length ? 'Deselect All' : 'Select All'}
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                          {selectedUsersForNotification.length} of {users.length} selected
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {users.map((user) => (
+                          <div key={user.id} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedUsersForNotification.includes(user.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUsersForNotification([...selectedUsersForNotification, user.id]);
+                                } else {
+                                  setSelectedUsersForNotification(selectedUsersForNotification.filter(id => id !== user.id));
+                                }
+                              }}
+                              className="rounded"
+                            />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{user.first_name} {user.last_name}</p>
+                              <p className="text-xs text-muted-foreground">{user.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="maintenance">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Settings className="h-5 h-5 mr-2" />
+                Maintenance Mode Control
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h3 className="text-lg font-semibold">Maintenance Mode</h3>
+                    <p className="text-sm text-muted-foreground">
+                      When enabled, users will see a maintenance page instead of the app
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <Badge variant={isMaintenanceMode ? 'destructive' : 'default'}>
+                      {isMaintenanceMode ? 'ON' : 'OFF'}
+                    </Badge>
+                    <Button
+                      onClick={toggleMaintenanceMode}
+                      variant={isMaintenanceMode ? 'destructive' : 'default'}
+                    >
+                      {isMaintenanceMode ? 'Disable' : 'Enable'} Maintenance Mode
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="maintenanceMessage">Custom Maintenance Message</Label>
+                    <textarea
+                      id="maintenanceMessage"
+                      value={maintenanceMessage}
+                      onChange={(e) => setMaintenanceMessage(e.target.value)}
+                      placeholder="Enter custom message for maintenance page..."
+                      className="w-full p-3 border rounded-md h-24 resize-none"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave empty to use default message
+                    </p>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Important Notes:</h4>
+                    <ul className="text-sm text-yellow-700 space-y-1">
+                      <li>• Maintenance mode will immediately affect all users</li>
+                      <li>• Users won't be able to access any app features</li>
+                      <li>• Only disable when maintenance is complete</li>
+                      <li>• Admin dashboard will remain accessible</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

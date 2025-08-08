@@ -250,6 +250,33 @@ const Index = () => {
       color: 'from-green-400 to-green-600',
       gameNumber: 5,
       requiredPlan: 'Gold Plan'
+    },
+    {
+      title: 'Ludo',
+      description: 'Classic board game with friends',
+      icon: <Gamepad2 className="h-8 w-8 text-orange-500" />,
+      route: '/game/ludo',
+      color: 'from-orange-400 to-orange-600',
+      gameNumber: 6,
+      requiredPlan: 'Platinum Plan'
+    },
+    {
+      title: 'Blackjack 21',
+      description: 'Beat the dealer at 21',
+      icon: <TrendingUp className="h-8 w-8 text-red-500" />,
+      route: '/game/blackjack',
+      color: 'from-red-400 to-red-600',
+      gameNumber: 7,
+      requiredPlan: 'Platinum Plan'
+    },
+    {
+      title: 'Snake Leader',
+      description: 'Classic snake game with leaderboard',
+      icon: <RotateCcw className="h-8 w-8 text-indigo-500" />,
+      route: '/game/snake',
+      color: 'from-indigo-400 to-indigo-600',
+      gameNumber: 8,
+      requiredPlan: 'Platinum Plan'
     }
   ];
 
