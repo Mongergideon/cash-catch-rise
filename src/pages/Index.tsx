@@ -283,7 +283,7 @@ const Index = () => {
       title: 'Snake Leader',
       description: 'Classic snake game with leaderboard',
       icon: <RotateCcw className="h-8 w-8 text-indigo-500" />,
-      route: '/game/snake',
+      route: '/game/snake-leader',
       color: 'from-indigo-400 to-indigo-600',
       gameNumber: 8,
       requiredPlan: 'Platinum Plan'

@@ -142,6 +142,14 @@ const WithdrawalCard: React.FC<WithdrawalCardProps> = ({
                 >
                   Reject
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onStatusUpdate(withdrawal.id, 'editing')}
+                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                >
+                  Edit Request
+                </Button>
               </>
             )}
           </div>
