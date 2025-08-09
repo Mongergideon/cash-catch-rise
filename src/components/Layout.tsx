@@ -1,9 +1,46 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { Home, CreditCard, Wallet, Bell, CheckSquare, Settings, MessageCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import MaintenanceMode from '@/components/MaintenanceMode';
 
 const Layout = () => {
+  const [maintenanceMode, setMaintenanceMode] = useState<{enabled: boolean, message: string} | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkMaintenanceMode();
+  }, []);
+
+  const checkMaintenanceMode = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_maintenance_status');
+      if (error) throw error;
+      
+      // Parse the JSON data from the database function
+      const maintenanceData = data as { enabled: boolean; message: string };
+      setMaintenanceMode(maintenanceData);
+    } catch (error) {
+      console.error('Error checking maintenance mode:', error);
+      setMaintenanceMode({ enabled: false, message: '' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (maintenanceMode?.enabled) {
+    return <MaintenanceMode message={maintenanceMode.message} />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}

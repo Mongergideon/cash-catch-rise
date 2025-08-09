@@ -330,6 +330,13 @@ const Wallet = () => {
         user_uuid: user?.id
       });
 
+      // Create notification for withdrawal request
+      await supabase.rpc('create_user_action_notification', {
+        user_uuid: user?.id,
+        action_type: 'withdrawal_request',
+        action_details: { amount: amount.toString() }
+      });
+
       // Set success data and show modal
       setSuccessWithdrawal({
         amount: amount,

@@ -322,6 +322,13 @@ const AdminDashboard = () => {
 
         if (error) throw error;
 
+        // Create notification for user
+        await supabase.rpc('create_user_action_notification', {
+          user_uuid: withdrawal.user_id,
+          action_type: 'withdrawal_approved',
+          action_details: { amount: withdrawal.amount.toString() }
+        });
+
         toast({
           title: "Success",
           description: `Withdrawal approved successfully`,
@@ -371,6 +378,13 @@ const AdminDashboard = () => {
         });
 
         if (error) throw error;
+
+        // Create notification for user
+        await supabase.rpc('create_user_action_notification', {
+          user_uuid: withdrawal.user_id,
+          action_type: 'withdrawal_rejected',
+          action_details: { amount: withdrawal.amount.toString() }
+        });
 
         toast({
           title: "Success",

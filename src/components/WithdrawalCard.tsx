@@ -115,21 +115,52 @@ const WithdrawalCard: React.FC<WithdrawalCardProps> = ({
           <p className="text-sm">{new Date(withdrawal.created_at).toLocaleDateString()}</p>
         </div>
         
-        {isAdmin && withdrawal.status === 'pending' && (
-          <div className="flex space-x-2 pt-2">
+        {isAdmin && (withdrawal.status === 'pending' || withdrawal.status === 'processing') && (
+          <div className="flex flex-wrap gap-2 pt-2">
+            {withdrawal.status === 'pending' && (
+              <Button
+                size="sm"
+                onClick={() => onStatusUpdate(withdrawal.id, 'processing')}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Set Processing
+              </Button>
+            )}
+            {withdrawal.status === 'processing' && (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => onStatusUpdate(withdrawal.id, 'approved')}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => onStatusUpdate(withdrawal.id, 'rejected', 'Rejected by admin')}
+                >
+                  Reject
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+        
+        {!isAdmin && withdrawal.status === 'processing' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+            <p className="text-blue-800 text-sm font-medium">
+              💳 Withdrawal is being processed. You can edit your bank details below for ₦1,000.
+            </p>
             <Button
               size="sm"
-              onClick={() => onStatusUpdate(withdrawal.id, 'approved')}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="mt-2 bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => {
+                // This would open an edit dialog - implement based on your needs
+                console.log('Edit withdrawal details');
+              }}
             >
-              Approve
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => onStatusUpdate(withdrawal.id, 'rejected', 'Rejected by admin')}
-            >
-              Reject
+              Edit Bank Details (₦1,000)
             </Button>
           </div>
         )}

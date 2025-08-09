@@ -91,7 +91,7 @@ const Index = () => {
     if (!user || !profile) return;
 
     try {
-      // Fix: Properly handle the plan type conversion
+      // Fix: Check plan for games unlocked - Bronze and above get all games
       const planType = profile.current_plan as 'free_trial' | 'starter' | 'bronze' | 'silver' | 'gold' | 'platinum';
       
       const { data, error } = await supabase
@@ -101,7 +101,10 @@ const Index = () => {
         .single();
 
       if (error) throw error;
-      setUserPlan(data);
+      
+      // Special logic for game unlocking: Gold and above get access to all games
+      const gamesUnlocked = ['gold', 'platinum'].includes(planType) ? 8 : (data?.games_unlocked || 1);
+      setUserPlan({ games_unlocked: gamesUnlocked });
     } catch (error) {
       console.error('Error fetching user plan:', error);
     }
@@ -159,6 +162,13 @@ const Index = () => {
       });
 
       if (walletError) throw walletError;
+
+      // Create notification for daily bonus
+      await supabase.rpc('create_user_action_notification', {
+        user_uuid: user.id,
+        action_type: 'daily_bonus',
+        action_details: { amount: bonusAmount.toString() }
+      });
 
       toast({
         title: "Daily Bonus Claimed!",

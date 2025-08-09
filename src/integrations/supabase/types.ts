@@ -674,6 +674,59 @@ export type Database = {
           },
         ]
       }
+      withdrawal_edit_requests: {
+        Row: {
+          created_at: string | null
+          edit_fee_paid: boolean | null
+          id: string
+          new_account_name: string
+          new_account_number: string
+          new_bank_name: string
+          payment_reference: string | null
+          processed_at: string | null
+          processed_by: string | null
+          status: string | null
+          user_id: string
+          withdrawal_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          edit_fee_paid?: boolean | null
+          id?: string
+          new_account_name: string
+          new_account_number: string
+          new_bank_name: string
+          payment_reference?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string | null
+          user_id: string
+          withdrawal_id: string
+        }
+        Update: {
+          created_at?: string | null
+          edit_fee_paid?: boolean | null
+          id?: string
+          new_account_name?: string
+          new_account_number?: string
+          new_bank_name?: string
+          payment_reference?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string | null
+          user_id?: string
+          withdrawal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_edit_requests_withdrawal_id_fkey"
+            columns: ["withdrawal_id"]
+            isOneToOne: false
+            referencedRelation: "withdrawals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       withdrawals: {
         Row: {
           account_name: string
@@ -682,8 +735,11 @@ export type Database = {
           amount: number
           bank_name: string
           created_at: string | null
+          edit_fee_paid: boolean | null
+          edit_payment_reference: string | null
           fee: number
           id: string
+          is_edited: boolean | null
           processed_at: string | null
           processed_by: string | null
           status: Database["public"]["Enums"]["withdrawal_status"] | null
@@ -696,8 +752,11 @@ export type Database = {
           amount: number
           bank_name: string
           created_at?: string | null
+          edit_fee_paid?: boolean | null
+          edit_payment_reference?: string | null
           fee?: number
           id?: string
+          is_edited?: boolean | null
           processed_at?: string | null
           processed_by?: string | null
           status?: Database["public"]["Enums"]["withdrawal_status"] | null
@@ -710,8 +769,11 @@ export type Database = {
           amount?: number
           bank_name?: string
           created_at?: string | null
+          edit_fee_paid?: boolean | null
+          edit_payment_reference?: string | null
           fee?: number
           id?: string
+          is_edited?: boolean | null
           processed_at?: string | null
           processed_by?: string | null
           status?: Database["public"]["Enums"]["withdrawal_status"] | null
@@ -810,6 +872,14 @@ export type Database = {
           total_funding: number
         }[]
       }
+      admin_process_withdrawal_edit: {
+        Args: {
+          edit_request_id: string
+          new_status: string
+          admin_user_id?: string
+        }
+        Returns: boolean
+      }
       admin_send_notification: {
         Args: {
           user_ids: string[]
@@ -849,7 +919,15 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: boolean
       }
+      create_user_action_notification: {
+        Args: { user_uuid: string; action_type: string; action_details?: Json }
+        Returns: boolean
+      }
       get_maintenance_mode: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_maintenance_status: {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
