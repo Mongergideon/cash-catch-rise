@@ -158,15 +158,12 @@ const WithdrawalCard: React.FC<WithdrawalCardProps> = ({
         {!isAdmin && withdrawal.status === 'processing' && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
             <p className="text-blue-800 text-sm font-medium">
-              💳 Withdrawal is being processed. You can edit your bank details below for ₦1,000.
+              💳 Withdrawal is being processed. You can edit your bank details for ₦1,000.
             </p>
             <Button
               size="sm"
               className="mt-2 bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => {
-                // This would open an edit dialog - implement based on your needs
-                console.log('Edit withdrawal details');
-              }}
+              onClick={() => onStatusUpdate(withdrawal.id, 'edit_dialog')}
             >
               Edit Bank Details (₦1,000)
             </Button>

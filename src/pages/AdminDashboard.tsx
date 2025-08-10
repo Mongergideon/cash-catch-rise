@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import WithdrawalSections from '@/components/WithdrawalSections';
 
 interface DashboardStats {
   totalUsers: number;
@@ -743,110 +744,29 @@ const AdminDashboard = () => {
                   </Button>
                 </div>
               ) : (
-                <div>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Found {withdrawals.length} total withdrawal requests
-                  </p>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>User</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Bank Details</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Expected Payout</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {withdrawals.map((withdrawal) => (
-                        <TableRow key={withdrawal.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">
-                                {withdrawal.first_name || 'Unknown'} {withdrawal.last_name || 'User'}
-                              </p>
-                              <p className="text-sm text-gray-600">{withdrawal.email || 'No email'}</p>
-                              <p className="text-sm text-gray-600">{withdrawal.phone || 'No phone'}</p>
-                              <p className="text-xs text-gray-500">ID: {withdrawal.user_id.substring(0, 8)}...</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-semibold">₦{withdrawal.amount.toLocaleString()}</p>
-                              <p className="text-sm text-gray-600">Fee: ₦{withdrawal.fee}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{withdrawal.bank_name}</p>
-                              <p className="text-sm">{withdrawal.account_number}</p>
-                              <p className="text-sm text-gray-600">{withdrawal.account_name}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant={
-                                withdrawal.status === 'pending' ? 'secondary' :
-                                withdrawal.status === 'approved' ? 'default' :
-                                'destructive'
-                              }
-                            >
-                              {withdrawal.status.toUpperCase()}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(withdrawal.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm text-blue-600">
-                              {new Date(new Date(withdrawal.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                             {withdrawal.status === 'pending' && (
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => processWithdrawal(withdrawal.id, 'approve', withdrawal)}
-                                  disabled={processing === withdrawal.id}
-                                  className="bg-green-600 hover:bg-green-700"
-                                  title="Approve withdrawal"
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => processWithdrawal(withdrawal.id, 'processing', withdrawal)}
-                                  disabled={processing === withdrawal.id}
-                                  className="bg-blue-600 hover:bg-blue-700"
-                                  title="Set to processing"
-                                >
-                                  <Clock className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => processWithdrawal(withdrawal.id, 'reject', withdrawal)}
-                                  disabled={processing === withdrawal.id}
-                                  title="Reject withdrawal"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-                            {withdrawal.status !== 'pending' && (
-                              <span className="text-sm text-gray-500 capitalize">
-                                {withdrawal.status}
-                              </span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <WithdrawalSections
+                  withdrawals={withdrawals.map(w => ({
+                    ...w,
+                    profiles: {
+                      first_name: w.first_name,
+                      last_name: w.last_name,
+                      email: w.email
+                    }
+                  }))}
+                  onStatusUpdate={(id, status, notes) => {
+                    const withdrawal = withdrawals.find(w => w.id === id);
+                    if (withdrawal) {
+                      if (status === 'processing') {
+                        processWithdrawal(id, 'processing', withdrawal);
+                      } else if (status === 'approved') {
+                        processWithdrawal(id, 'approve', withdrawal);
+                      } else if (status === 'rejected') {
+                        processWithdrawal(id, 'reject', withdrawal);
+                      }
+                    }
+                  }}
+                  isAdmin={true}
+                />
               )}
             </CardContent>
           </Card>

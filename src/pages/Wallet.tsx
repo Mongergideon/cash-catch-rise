@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { NIGERIAN_BANKS } from '@/data/nigerianBanks';
 import WithdrawalCard from '@/components/WithdrawalCard';
 import WalletNotificationBanner from '@/components/WalletNotificationBanner';
+import EditWithdrawalDialog from '@/components/EditWithdrawalDialog';
 
 // Declare FlutterwaveCheckout for TypeScript
 declare global {
@@ -73,6 +74,8 @@ const Wallet = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successWithdrawal, setSuccessWithdrawal] = useState<any>(null);
   const [lastWithdrawal, setLastWithdrawal] = useState<Withdrawal | null>(null);
+  const [editDialog, setEditDialog] = useState(false);
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<Withdrawal | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -667,37 +670,40 @@ const Wallet = () => {
           <CardContent>
             <div className="space-y-4">
               {withdrawals.map((withdrawal) => (
-                <div key={withdrawal.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <ArrowDownToLine className="text-blue-600" size={20} />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          ₦{withdrawal.amount.toLocaleString()} to {withdrawal.bank_name}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(withdrawal.created_at).toLocaleDateString()}
-                          {withdrawal.status === 'pending' && (
-                            <span className="ml-2 text-blue-600">
-                              • Expected: {new Date(new Date(withdrawal.created_at).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <Badge className={getWithdrawalStatusColor(withdrawal.status)}>
-                      {withdrawal.status.toUpperCase()}
-                    </Badge>
-                  </div>
-                </div>
+                <WithdrawalCard
+                  key={withdrawal.id}
+                  withdrawal={{
+                    ...withdrawal,
+                    profiles: null
+                  }}
+                  onStatusUpdate={(id, status) => {
+                    if (status === 'edit_dialog') {
+                      setSelectedWithdrawal(withdrawal);
+                      setEditDialog(true);
+                    }
+                  }}
+                  isAdmin={false}
+                />
               ))}
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Edit Withdrawal Dialog */}
+      {selectedWithdrawal && (
+        <EditWithdrawalDialog
+          isOpen={editDialog}
+          onClose={() => {
+            setEditDialog(false);
+            setSelectedWithdrawal(null);
+          }}
+          withdrawal={selectedWithdrawal}
+          onSuccess={() => {
+            fetchWithdrawals();
+            fetchWalletData();
+          }}
+        />
       )}
 
       {/* Recent Transactions */}
