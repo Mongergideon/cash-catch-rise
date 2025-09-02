@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -802,63 +802,63 @@ export type Database = {
     }
     Functions: {
       admin_ban_user: {
-        Args: { user_uuid: string; banned: boolean }
+        Args: { banned: boolean; user_uuid: string }
         Returns: boolean
       }
       admin_get_all_deposits: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          user_id: string
           amount: number
-          currency: string
-          payment_method: string
-          transaction_reference: string
-          status: string
-          created_at: string
           completed_at: string
-          first_name: string
-          last_name: string
+          created_at: string
+          currency: string
           email: string
+          first_name: string
+          id: string
+          last_name: string
+          payment_method: string
           phone: string
+          status: string
+          transaction_reference: string
+          user_id: string
         }[]
       }
       admin_get_all_users: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
+          created_at: string
+          current_plan: string
           email: string
           first_name: string
+          id: string
+          is_banned: boolean
           last_name: string
           phone: string
+          plan_expires_at: string
+          referral_code: string
           wallet_earnings: number
           wallet_funding: number
-          current_plan: string
-          plan_expires_at: string
-          is_banned: boolean
-          created_at: string
-          referral_code: string
         }[]
       }
       admin_get_all_withdrawals: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          user_id: string
-          amount: number
-          fee: number
-          bank_name: string
-          account_number: string
           account_name: string
-          status: Database["public"]["Enums"]["withdrawal_status"]
+          account_number: string
+          admin_notes: string
+          amount: number
+          bank_name: string
           created_at: string
+          email: string
+          fee: number
+          first_name: string
+          id: string
+          last_name: string
+          phone: string
           processed_at: string
           processed_by: string
-          admin_notes: string
-          first_name: string
-          last_name: string
-          email: string
-          phone: string
+          status: Database["public"]["Enums"]["withdrawal_status"]
+          user_id: string
         }[]
       }
       admin_get_user_count: {
@@ -874,45 +874,54 @@ export type Database = {
       }
       admin_process_withdrawal_edit: {
         Args: {
+          admin_user_id?: string
           edit_request_id: string
           new_status: string
-          admin_user_id?: string
         }
         Returns: boolean
       }
       admin_send_notification: {
         Args: {
-          user_ids: string[]
-          notification_title: string
           notification_message: string
+          notification_title: string
           notification_type?: string
+          user_ids: string[]
         }
         Returns: boolean
       }
       admin_set_maintenance_mode: {
-        Args: { enabled: boolean; custom_message?: string }
+        Args: { custom_message?: string; enabled: boolean }
         Returns: boolean
       }
       admin_set_user_plan_status: {
         Args: {
-          target_user_id: string
-          new_plan: Database["public"]["Enums"]["plan_type"]
-          new_expiry?: string
           admin_user_id?: string
+          new_expiry?: string
+          new_plan: Database["public"]["Enums"]["plan_type"]
+          target_user_id: string
         }
         Returns: boolean
       }
+      admin_update_withdrawal_details: {
+        Args: {
+          new_account_name: string
+          new_account_number: string
+          new_bank_name: string
+          withdrawal_id: string
+        }
+        Returns: undefined
+      }
       admin_update_withdrawal_status: {
         Args: {
-          withdrawal_id: string
-          new_status: Database["public"]["Enums"]["withdrawal_status"]
           admin_id: string
+          new_status: Database["public"]["Enums"]["withdrawal_status"]
           notes?: string
+          withdrawal_id: string
         }
         Returns: boolean
       }
       can_user_play_game: {
-        Args: { user_uuid: string; game_name: string }
+        Args: { game_name: string; user_uuid: string }
         Returns: boolean
       }
       can_user_withdraw: {
@@ -920,7 +929,7 @@ export type Database = {
         Returns: boolean
       }
       create_user_action_notification: {
-        Args: { user_uuid: string; action_type: string; action_details?: Json }
+        Args: { action_details?: Json; action_type: string; user_uuid: string }
         Returns: boolean
       }
       get_maintenance_mode: {
@@ -932,11 +941,11 @@ export type Database = {
         Returns: Json
       }
       increment_game_play: {
-        Args: { user_uuid: string; game_name: string }
+        Args: { game_name: string; user_uuid: string }
         Returns: boolean
       }
       process_plan_renewal: {
-        Args: { user_uuid: string; payment_reference: string }
+        Args: { payment_reference: string; user_uuid: string }
         Returns: boolean
       }
       update_next_withdrawal_time: {
@@ -945,10 +954,10 @@ export type Database = {
       }
       update_wallet_balance: {
         Args: {
-          user_uuid: string
-          wallet_type: string
           amount: number
           transaction_description?: string
+          user_uuid: string
+          wallet_type: string
         }
         Returns: boolean
       }

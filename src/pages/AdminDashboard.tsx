@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import WithdrawalSections from '@/components/WithdrawalSections';
+import AdminWithdrawalEditDialog from '@/components/AdminWithdrawalEditDialog';
 
 interface DashboardStats {
   totalUsers: number;
@@ -112,6 +113,8 @@ const AdminDashboard = () => {
   const [notificationTitle, setNotificationTitle] = useState('');
   const [notificationMessage, setNotificationMessage] = useState('');
   const [selectedUsersForNotification, setSelectedUsersForNotification] = useState<string[]>([]);
+  const [editWithdrawalDialog, setEditWithdrawalDialog] = useState(false);
+  const [selectedWithdrawalForEdit, setSelectedWithdrawalForEdit] = useState<Withdrawal | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -762,6 +765,9 @@ const AdminDashboard = () => {
                         processWithdrawal(id, 'approve', withdrawal);
                       } else if (status === 'rejected') {
                         processWithdrawal(id, 'reject', withdrawal);
+                      } else if (status === 'editing') {
+                        setSelectedWithdrawalForEdit(withdrawal);
+                        setEditWithdrawalDialog(true);
                       }
                     }
                   }}
@@ -1261,6 +1267,17 @@ const AdminDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Admin Withdrawal Edit Dialog */}
+      <AdminWithdrawalEditDialog
+        withdrawal={selectedWithdrawalForEdit}
+        open={editWithdrawalDialog}
+        onOpenChange={setEditWithdrawalDialog}
+        onUpdate={() => {
+          fetchWithdrawals();
+          setSelectedWithdrawalForEdit(null);
+        }}
+      />
     </div>
   );
 };
