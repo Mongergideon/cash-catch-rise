@@ -25,6 +25,7 @@ import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import AdminAuth from "./pages/AdminAuth";
 import AdminDashboard from "./pages/AdminDashboard";
+import SuccessfulWithdrawals from "./pages/SuccessfulWithdrawals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="notifications" element={<Notifications />} />
               <Route path="tasks" element={<Tasks />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="successful-withdrawals" element={<SuccessfulWithdrawals />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

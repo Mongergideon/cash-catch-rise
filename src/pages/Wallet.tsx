@@ -16,7 +16,6 @@ import { NIGERIAN_BANKS } from '@/data/nigerianBanks';
 import WithdrawalCard from '@/components/WithdrawalCard';
 import WalletNotificationBanner from '@/components/WalletNotificationBanner';
 import EditWithdrawalDialog from '@/components/EditWithdrawalDialog';
-import FakeCompletedWithdrawals from '@/components/FakeCompletedWithdrawals';
 
 // Declare FlutterwaveCheckout for TypeScript
 declare global {
@@ -770,7 +769,7 @@ const Wallet = () => {
       </Card>
 
       {/* Fake Completed Withdrawals */}
-      <FakeCompletedWithdrawals />
+      {/* Moved to separate page: /successful-withdrawals */}
 
       {/* WhatsApp Support */}
       <Card className="bg-green-50 border-green-200">

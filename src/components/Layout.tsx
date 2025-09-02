@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, CreditCard, Wallet, Bell, CheckSquare, Settings, MessageCircle } from 'lucide-react';
+import { Home, CreditCard, Wallet, Bell, CheckSquare, Settings, MessageCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import MaintenanceMode from '@/components/MaintenanceMode';
 
@@ -121,15 +121,15 @@ const Layout = () => {
           </NavLink>
           
           <NavLink
-            to="/tasks"
+            to="/successful-withdrawals"
             className={({ isActive }) =>
               `flex flex-col items-center justify-center space-y-1 transition-all hover:scale-105 ${
                 isActive ? 'text-primary bg-primary/10 pink-pulse' : 'text-muted-foreground hover:text-primary'
               }`
             }
           >
-            <CheckSquare size={20} />
-            <span className="text-xs">Tasks</span>
+            <CheckCircle size={20} />
+            <span className="text-xs">Success</span>
           </NavLink>
           
           <NavLink
