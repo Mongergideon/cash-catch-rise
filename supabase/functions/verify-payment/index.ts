@@ -90,6 +90,17 @@ serve(async (req) => {
     console.log("Payment verification response:", verificationData);
 
     if (!verifyResponse.ok || verificationData.status !== "success") {
+      // Handle specific Flutterwave error messages
+      if (verificationData.message === "No transaction was found for this id") {
+        return new Response(
+          JSON.stringify({ 
+            error: "Transaction not found. Please check your transaction reference and try again.",
+            details: "This transaction reference does not exist in our payment system."
+          }), 
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           error: "Transaction verification failed",
