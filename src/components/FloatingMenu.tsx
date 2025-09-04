@@ -81,39 +81,40 @@ const FloatingMenu = () => {
         <div className="relative">
           <NavLink
             to="/"
+            onClick={() => setIsOpen(false)} // Close menu when going home
             className={({ isActive }) => `
               relative w-16 h-16 rounded-full flex items-center justify-center
-              transition-all duration-300 transform-gpu shadow-2xl
+              transition-all duration-300 transform-gpu shadow-2xl z-20
               ${isActive && !isOpen 
                 ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-blue-500/50' 
                 : 'bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-blue-500 hover:to-purple-600'
               }
               hover:scale-110 hover:shadow-2xl
-              ${isOpen ? 'scale-110 rotate-45' : 'scale-100 rotate-0'}
+              ${isOpen ? 'scale-110' : 'scale-100'}
             `}
           >
-            <Home size={24} className={`transition-all duration-300 ${isOpen ? 'opacity-0' : 'opacity-100'}`} />
+            <Home size={24} className={`transition-all duration-300 ${isOpen ? 'opacity-50' : 'opacity-100'}`} />
           </NavLink>
 
-          {/* Toggle Button Overlay */}
-          <button
-            onClick={toggleMenu}
-            className={`
-              absolute inset-0 w-16 h-16 rounded-full flex items-center justify-center
-              transition-all duration-300 transform-gpu
-              ${isOpen 
-                ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-red-500/50' 
-                : 'bg-transparent'
-              }
-              hover:scale-110 hover:shadow-2xl
-            `}
-          >
-            {isOpen ? (
+          {/* Toggle Button Overlay - Only visible when menu is closed */}
+          {!isOpen && (
+            <button
+              onClick={toggleMenu}
+              className="absolute inset-0 w-16 h-16 rounded-full flex items-center justify-center bg-transparent hover:scale-110 z-30"
+            >
+              <Plus size={20} className="absolute opacity-0 hover:opacity-100 transition-opacity duration-300 text-white" />
+            </button>
+          )}
+
+          {/* Close Button - Only visible when menu is open */}
+          {isOpen && (
+            <button
+              onClick={toggleMenu}
+              className="absolute inset-0 w-16 h-16 rounded-full flex items-center justify-center z-30 bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-red-500/50 hover:scale-110 hover:shadow-2xl transition-all duration-300"
+            >
               <X size={24} className="transition-all duration-300" />
-            ) : (
-              <Plus size={20} className="absolute opacity-0 hover:opacity-100 transition-opacity duration-300" />
-            )}
-          </button>
+            </button>
+          )}
         </div>
 
 
