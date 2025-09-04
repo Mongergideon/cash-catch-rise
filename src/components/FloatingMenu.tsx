@@ -9,8 +9,7 @@ import {
   Settings, 
   CheckCircle,
   Plus,
-  X,
-  MessageCircle
+  X
 } from 'lucide-react';
 
 const menuItems = [
@@ -24,24 +23,19 @@ const menuItems = [
 
 const FloatingMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isSpinning, setIsSpinning] = useState(false);
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
-  const handleWhatsAppSpin = () => {
-    setIsSpinning(true);
-    setTimeout(() => {
-      setIsSpinning(false);
-      window.open('https://wa.me/2349136139429', '_blank');
-    }, 1000);
-  };
-
   const getItemPosition = (index: number, total: number) => {
-    const angle = (index * (360 / total)) * (Math.PI / 180);
-    const radius = 80;
+    // Arrange items in a semi-circle above the button (upward direction)
+    const startAngle = Math.PI; // Start from left (180 degrees)
+    const endAngle = 0; // End at right (0 degrees)
+    const angleStep = (startAngle - endAngle) / (total - 1);
+    const angle = startAngle - (index * angleStep);
+    const radius = 70;
     const x = Math.cos(angle) * radius;
     const y = Math.sin(angle) * radius;
-    return { x, y };
+    return { x: -x, y: y }; // Negative x to flip horizontally, positive y for upward
   };
 
   return (
@@ -55,7 +49,7 @@ const FloatingMenu = () => {
       )}
 
       {/* Floating Menu Container */}
-      <div className="fixed bottom-8 right-8 z-50">
+      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
         {/* Menu Items */}
         {isOpen && menuItems.map((item, index) => {
           const { x, y } = getItemPosition(index, menuItems.length);
@@ -69,8 +63,8 @@ const FloatingMenu = () => {
               className={({ isActive }) => `
                 absolute transition-all duration-300 ease-out
                 ${isActive ? 'bg-primary text-white shadow-lg shadow-primary/50' : 'bg-white text-gray-700 hover:bg-primary hover:text-white shadow-lg'}
-                w-12 h-12 rounded-full flex items-center justify-center
-                hover:scale-110 transform-gpu
+                w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center
+                hover:scale-110 transform-gpu z-10
                 animate-in fade-in zoom-in
               `}
               style={{
@@ -78,7 +72,7 @@ const FloatingMenu = () => {
                 animationDelay: `${index * 50}ms`,
               }}
             >
-              <Icon size={20} />
+              <Icon size={16} className="sm:w-5 sm:h-5" />
             </NavLink>
           );
         })}
@@ -122,21 +116,6 @@ const FloatingMenu = () => {
           </button>
         </div>
 
-        {/* WhatsApp Spinning Button */}
-        <button
-          onClick={handleWhatsAppSpin}
-          className={`
-            absolute -top-20 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full
-            bg-gradient-to-r from-green-500 to-green-600 text-white
-            flex items-center justify-center shadow-lg hover:shadow-xl
-            transition-all duration-300 transform-gpu
-            hover:scale-110 hover:from-green-600 hover:to-green-700
-            ${isSpinning ? 'animate-spin' : ''}
-            ${isOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'}
-          `}
-        >
-          <MessageCircle size={20} />
-        </button>
 
         {/* Ripple Effect */}
         {isOpen && (

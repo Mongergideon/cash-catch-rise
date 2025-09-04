@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { User, Phone, Mail, LogOut, Shield } from 'lucide-react';
+import { User, Phone, Mail, LogOut, Shield, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -222,6 +222,23 @@ const Settings = () => {
               {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'}
             </span>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Support */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Support & Contact</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button
+            onClick={() => window.open('https://wa.me/2349136139429', '_blank')}
+            variant="outline"
+            className="w-full bg-green-50 hover:bg-green-100 border-green-200"
+          >
+            <MessageCircle className="h-4 w-4 mr-2 text-green-600" />
+            Contact Support on WhatsApp
+          </Button>
         </CardContent>
       </Card>
 
