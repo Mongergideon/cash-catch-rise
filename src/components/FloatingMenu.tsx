@@ -9,7 +9,8 @@ import {
   Settings, 
   CheckCircle,
   Plus,
-  X
+  X,
+  MessageCircle
 } from 'lucide-react';
 
 const menuItems = [
@@ -23,8 +24,17 @@ const menuItems = [
 
 const FloatingMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSpinning, setIsSpinning] = useState(false);
 
   const toggleMenu = () => setIsOpen(!isOpen);
+
+  const handleWhatsAppSpin = () => {
+    setIsSpinning(true);
+    setTimeout(() => {
+      setIsSpinning(false);
+      window.open('https://wa.me/2349136139429', '_blank');
+    }, 1000);
+  };
 
   const getItemPosition = (index: number, total: number) => {
     const angle = (index * (360 / total)) * (Math.PI / 180);
@@ -111,6 +121,22 @@ const FloatingMenu = () => {
             )}
           </button>
         </div>
+
+        {/* WhatsApp Spinning Button */}
+        <button
+          onClick={handleWhatsAppSpin}
+          className={`
+            absolute -top-20 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full
+            bg-gradient-to-r from-green-500 to-green-600 text-white
+            flex items-center justify-center shadow-lg hover:shadow-xl
+            transition-all duration-300 transform-gpu
+            hover:scale-110 hover:from-green-600 hover:to-green-700
+            ${isSpinning ? 'animate-spin' : ''}
+            ${isOpen ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'}
+          `}
+        >
+          <MessageCircle size={20} />
+        </button>
 
         {/* Ripple Effect */}
         {isOpen && (
