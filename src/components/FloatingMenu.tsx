@@ -32,10 +32,10 @@ const FloatingMenu = () => {
     const endAngle = 0; // End at right (0 degrees)
     const angleStep = (startAngle - endAngle) / (total - 1);
     const angle = startAngle - (index * angleStep);
-    const radius = 70;
+    const radius = 90;
     const x = Math.cos(angle) * radius;
     const y = Math.sin(angle) * radius;
-    return { x: -x, y: y }; // Negative x to flip horizontally, positive y for upward
+    return { x: -x, y: -Math.abs(y) }; // Negative x to flip horizontally, negative y to go upward
   };
 
   return (
@@ -63,7 +63,7 @@ const FloatingMenu = () => {
               className={({ isActive }) => `
                 absolute transition-all duration-300 ease-out
                 ${isActive ? 'bg-primary text-white shadow-lg shadow-primary/50' : 'bg-white text-gray-700 hover:bg-primary hover:text-white shadow-lg'}
-                w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center
+                w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center
                 hover:scale-110 transform-gpu z-10
                 animate-in fade-in zoom-in
               `}
@@ -72,7 +72,7 @@ const FloatingMenu = () => {
                 animationDelay: `${index * 50}ms`,
               }}
             >
-              <Icon size={16} className="sm:w-5 sm:h-5" />
+              <Icon size={24} className="sm:w-7 sm:h-7" />
             </NavLink>
           );
         })}
