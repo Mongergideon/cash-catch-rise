@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Search, CreditCard, Calendar, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TransactionResult {
   id: string;
@@ -22,40 +23,6 @@ const PaymentVerification = () => {
   const [verificationResult, setVerificationResult] = useState<TransactionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock transaction data for demonstration
-  const mockTransactions: Record<string, TransactionResult> = {
-    'FLW_REF_123456789': {
-      id: 'tx_123456789',
-      status: 'successful',
-      amount: 4700,
-      currency: 'NGN',
-      reference: 'FLW_REF_123456789',
-      date: '2025-09-04T10:30:00Z',
-      description: 'Plan Renewal Payment',
-      paymentMethod: 'Card Payment'
-    },
-    'FLW_REF_987654321': {
-      id: 'tx_987654321',
-      status: 'successful',
-      amount: 1000,
-      currency: 'NGN',
-      reference: 'FLW_REF_987654321',
-      date: '2025-09-04T14:15:00Z',
-      description: 'Withdrawal Edit Fee',
-      paymentMethod: 'Bank Transfer'
-    },
-    'FLW_REF_555444333': {
-      id: 'tx_555444333',
-      status: 'failed',
-      amount: 4700,
-      currency: 'NGN',
-      reference: 'FLW_REF_555444333',
-      date: '2025-09-04T09:45:00Z',
-      description: 'Plan Renewal Payment',
-      paymentMethod: 'Card Payment'
-    }
-  };
-
   const handleVerifyTransaction = async () => {
     if (!transactionRef.trim()) {
       toast.error('Please enter a transaction reference');
@@ -64,20 +31,37 @@ const PaymentVerification = () => {
 
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      const result = mockTransactions[transactionRef] || null;
-      
-      if (result) {
-        setVerificationResult(result);
-        toast.success('Transaction found');
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-payment', {
+        body: { transactionReference: transactionRef }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        const transaction = data.transaction;
+        setVerificationResult({
+          id: `tx_${Date.now()}`,
+          status: 'successful',
+          amount: transaction.amount,
+          currency: transaction.currency,
+          reference: transaction.reference,
+          date: new Date().toISOString(),
+          description: 'Wallet Funding',
+          paymentMethod: transaction.payment_method || 'Payment Gateway'
+        });
+        toast.success(`Payment verified! ₦${transaction.amount.toLocaleString()} added to your wallet.`);
       } else {
         setVerificationResult(null);
-        toast.error('Transaction not found. Please check your reference and try again.');
+        toast.error(data.error || 'Transaction verification failed');
       }
-      
+    } catch (error: any) {
+      console.error('Verification error:', error);
+      setVerificationResult(null);
+      toast.error(error.message || 'Transaction verification failed');
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const getStatusColor = (status: string) => {

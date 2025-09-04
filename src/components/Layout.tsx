@@ -133,15 +133,15 @@ const Layout = () => {
           </NavLink>
           
           <NavLink
-            to="/settings"
+            to="/payment-verification"
             className={({ isActive }) =>
               `flex flex-col items-center justify-center space-y-1 transition-all hover:scale-105 ${
                 isActive ? 'text-primary bg-primary/10 pink-pulse' : 'text-muted-foreground hover:text-primary'
               }`
             }
           >
-            <Settings size={20} />
-            <span className="text-xs">Settings</span>
+            <CheckSquare size={20} />
+            <span className="text-xs">Verify</span>
           </NavLink>
         </div>
       </nav>
