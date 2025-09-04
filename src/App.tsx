@@ -9,6 +9,7 @@ import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Plans from "./pages/Plans";
 import Wallet from "./pages/Wallet";
+import PaymentVerification from "./pages/PaymentVerification";
 import GameMoneyFalling from "./pages/GameMoneyFalling";
 import CoinRunner from "./pages/CoinRunner";
 import SpinWheel from "./pages/SpinWheel";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<AdminAuth />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/payment-verification" element={<PaymentVerification />} />
             <Route path="/" element={<Layout />}>
               <Route index element={<Index />} />
               <Route path="plans" element={<Plans />} />

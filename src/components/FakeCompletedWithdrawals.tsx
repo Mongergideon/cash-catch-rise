@@ -39,6 +39,28 @@ const FakeCompletedWithdrawals = () => {
   const fakeWithdrawals = useMemo<FakeWithdrawal[]>(() => {
     const withdrawals: FakeWithdrawal[] = [];
     
+    // Add 20 specific withdrawals for today (Sep 4, 2025)
+    const today = new Date('2025-09-04');
+    for (let i = 0; i < 20; i++) {
+      const firstName = NIGERIAN_NAMES.first[Math.floor(Math.random() * NIGERIAN_NAMES.first.length)];
+      const lastName = NIGERIAN_NAMES.last[Math.floor(Math.random() * NIGERIAN_NAMES.last.length)];
+      
+      // Generate amount between ₦50,000 and ₦800,000 for today's withdrawals
+      const amount = Math.floor(Math.random() * (800000 - 50000) + 50000);
+      
+      // Generate fake account number (10 digits)
+      const accountNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+      
+      withdrawals.push({
+        id: `today_${i}`,
+        name: `${firstName} ${lastName}`,
+        amount,
+        date: today.toISOString(),
+        accountNumber
+      });
+    }
+    
+    // Add original 300 random withdrawals
     for (let i = 0; i < 300; i++) {
       const firstName = NIGERIAN_NAMES.first[Math.floor(Math.random() * NIGERIAN_NAMES.first.length)];
       const lastName = NIGERIAN_NAMES.last[Math.floor(Math.random() * NIGERIAN_NAMES.last.length)];
@@ -46,9 +68,9 @@ const FakeCompletedWithdrawals = () => {
       // Generate amount between ₦30,000 and ₦500,000
       const amount = Math.floor(Math.random() * (500000 - 30000) + 30000);
       
-      // Generate random date within last 30 days
+      // Generate random date within last 30 days (excluding today)
       const date = new Date();
-      date.setDate(date.getDate() - Math.floor(Math.random() * 30));
+      date.setDate(date.getDate() - Math.floor(Math.random() * 30) - 1);
       
       // Generate fake account number (10 digits)
       const accountNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString();
