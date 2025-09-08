@@ -39,9 +39,9 @@ const FakeCompletedWithdrawals = () => {
   const fakeWithdrawals = useMemo<FakeWithdrawal[]>(() => {
     const withdrawals: FakeWithdrawal[] = [];
     
-    // Add 20 specific withdrawals for today (Sep 4, 2025)
-    const today = new Date('2025-09-04');
-    for (let i = 0; i < 20; i++) {
+    // Add 40 specific withdrawals for today's date
+    const today = new Date();
+    for (let i = 0; i < 40; i++) {
       const firstName = NIGERIAN_NAMES.first[Math.floor(Math.random() * NIGERIAN_NAMES.first.length)];
       const lastName = NIGERIAN_NAMES.last[Math.floor(Math.random() * NIGERIAN_NAMES.last.length)];
       
