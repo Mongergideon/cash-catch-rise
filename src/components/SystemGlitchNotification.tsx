@@ -17,17 +17,28 @@ const SystemGlitchNotification = () => {
   const AFFECTED_USER_ID = '9ab6f4c2-119f-4503-bec0-69a8fbb4d46c';
 
   useEffect(() => {
-    // Only show for the affected user and if they haven't dismissed it yet
+    // Only show for the affected user and if they haven't dismissed it or 24 hours haven't passed
     if (user?.id === AFFECTED_USER_ID) {
-      const dismissed = localStorage.getItem('system_glitch_notification_dismissed');
-      if (!dismissed) {
+      const dismissedTimestamp = localStorage.getItem('system_glitch_notification_dismissed');
+      
+      if (!dismissedTimestamp) {
         setShowNotification(true);
+      } else {
+        const dismissedTime = parseInt(dismissedTimestamp, 10);
+        const currentTime = Date.now();
+        const twentyFourHours = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        
+        // Show notification again if 24 hours have passed
+        if (currentTime - dismissedTime >= twentyFourHours) {
+          setShowNotification(true);
+        }
       }
     }
   }, [user]);
 
   const handleDismiss = () => {
-    localStorage.setItem('system_glitch_notification_dismissed', 'true');
+    // Store timestamp when dismissed
+    localStorage.setItem('system_glitch_notification_dismissed', Date.now().toString());
     setShowNotification(false);
   };
 
