@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import MaintenanceMode from '@/components/MaintenanceMode';
 import FloatingMenu from '@/components/FloatingMenu';
 import PhoneNumberPrompt from '@/components/PhoneNumberPrompt';
+import SystemGlitchNotification from '@/components/SystemGlitchNotification';
 
 const Layout = () => {
   const [maintenanceMode, setMaintenanceMode] = useState<{enabled: boolean, message: string} | null>(null);
@@ -46,6 +47,9 @@ const Layout = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
       {/* Phone Number Prompt */}
       <PhoneNumberPrompt />
+      
+      {/* System Glitch Notification for affected user */}
+      <SystemGlitchNotification />
       
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200/50">
