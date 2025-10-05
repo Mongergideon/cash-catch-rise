@@ -62,6 +62,7 @@ const Wallet = () => {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [fundingAmount, setFundingAmount] = useState('');
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
   const [bankDetails, setBankDetails] = useState({
     account_name: '',
     account_number: '',
@@ -245,12 +246,17 @@ const Wallet = () => {
   };
 
   const handleWithdrawal = async () => {
+    // Prevent duplicate submissions
+    if (isSubmittingWithdrawal) {
+      return;
+    }
+
     const amount = parseFloat(withdrawalAmount);
-    if (!amount || amount < 30000) {
+    if (!amount || amount < 50000) {
       toast({
         variant: "destructive",
         title: "Invalid Amount",
-        description: "Minimum withdrawal amount is ₦30,000",
+        description: "Minimum withdrawal amount is ₦50,000",
       });
       return;
     }
@@ -264,19 +270,14 @@ const Wallet = () => {
       return;
     }
 
-    // Check for withdrawal fee - ₦3,000 for amounts ₦100,000 and above
-    const requiresFee = amount >= 100000;
-    const withdrawalFee = requiresFee ? 3000 : 500;
+    // Fixed withdrawal fee is now ₦1,500 for all withdrawals
+    const withdrawalFee = 1500;
     
     if (walletData.wallet_funding < withdrawalFee) {
-      const feeMessage = requiresFee 
-        ? "Withdrawals of ₦100,000 and above require a ₦3,000 processing fee in your funding wallet."
-        : "You don't have enough balance to cover the withdrawal fee. Fund your wallet first.";
-      
       toast({
         variant: "destructive",
         title: "Insufficient Funding Balance",
-        description: feeMessage,
+        description: "You need at least ₦1,500 in your funding wallet to cover the withdrawal fee.",
       });
       return;
     }
@@ -289,6 +290,8 @@ const Wallet = () => {
       });
       return;
     }
+
+    setIsSubmittingWithdrawal(true);
 
     try {
       // CRITICAL FIX: Deduct withdrawal amount from earnings wallet IMMEDIATELY
@@ -306,7 +309,7 @@ const Wallet = () => {
         user_uuid: user?.id,
         wallet_type: 'funding',
         amount: -withdrawalFee,
-        transaction_description: `Withdrawal fee - ${requiresFee ? 'High amount (₦100k+)' : 'Standard'}`
+        transaction_description: `Withdrawal fee - ₦1,500`
       });
 
       if (feeError) throw feeError;
@@ -362,6 +365,8 @@ const Wallet = () => {
         title: "Withdrawal Error",
         description: "Failed to process withdrawal request. Please try again.",
       });
+    } finally {
+      setIsSubmittingWithdrawal(false);
     }
   };
 
@@ -644,14 +649,18 @@ const Wallet = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={handleWithdrawal} className="w-full">
-                      Submit Withdrawal Request
+                    <Button 
+                      onClick={handleWithdrawal} 
+                      className="w-full"
+                      disabled={isSubmittingWithdrawal}
+                    >
+                      {isSubmittingWithdrawal ? 'Processing...' : 'Submit Withdrawal Request'}
                     </Button>
                   </div>
                 </DialogContent>
               </Dialog>
               <p className="text-xs text-white/70">
-                Minimum withdrawal: ₦30,000 • Fee: ₦500 (₦3,000 for amounts ₦100,000 and above)
+                Minimum withdrawal: ₦50,000 • Fee: ₦1,500
               </p>
             </div>
           </CardContent>
@@ -759,8 +768,8 @@ const Wallet = () => {
         </CardHeader>
         <CardContent className="text-blue-800">
           <ul className="space-y-2 text-sm">
-            <li>• Minimum withdrawal amount: ₦30,000</li>
-            <li>• Withdrawal fee: ₦500 (₦3,000 for amounts ₦100,000 and above)</li>
+            <li>• Minimum withdrawal amount: ₦50,000</li>
+            <li>• Withdrawal fee: ₦1,500 (deducted from funding wallet)</li>
             <li>• Frequency: Maximum 1 withdrawal per 7 days</li>
             <li>• Processing time: 1-7 business days after approval</li>
             <li>• Free Trial users cannot withdraw earnings</li>
