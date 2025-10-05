@@ -294,6 +294,26 @@ const Wallet = () => {
     setIsSubmittingWithdrawal(true);
 
     try {
+      // Check for duplicate pending withdrawal (database-level protection)
+      const { data: canWithdraw, error: checkError } = await supabase.rpc(
+        'check_recent_pending_withdrawal',
+        {
+          user_uuid: user?.id,
+          withdrawal_amount: amount
+        }
+      );
+
+      if (checkError) throw checkError;
+
+      if (!canWithdraw) {
+        toast({
+          variant: "destructive",
+          title: "Duplicate Request Detected",
+          description: "You already have a pending withdrawal for this amount. Please wait before trying again.",
+        });
+        return;
+      }
+
       // CRITICAL FIX: Deduct withdrawal amount from earnings wallet IMMEDIATELY
       const { error: earningsError } = await supabase.rpc('update_wallet_balance', {
         user_uuid: user?.id,

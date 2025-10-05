@@ -928,6 +928,10 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: boolean
       }
+      check_recent_pending_withdrawal: {
+        Args: { user_uuid: string; withdrawal_amount: number }
+        Returns: boolean
+      }
       create_user_action_notification: {
         Args: { action_details?: Json; action_type: string; user_uuid: string }
         Returns: boolean
