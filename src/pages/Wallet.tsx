@@ -676,6 +676,10 @@ const Wallet = () => {
                     >
                       {isSubmittingWithdrawal ? 'Processing...' : 'Submit Withdrawal Request'}
                     </Button>
+                    <div className="text-sm text-muted-foreground text-center space-y-1">
+                      <p>💰 Minimum withdrawal: ₦50,000</p>
+                      <p>💳 Processing fee: ₦1,500</p>
+                    </div>
                   </div>
                 </DialogContent>
               </Dialog>
