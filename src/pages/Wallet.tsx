@@ -678,13 +678,15 @@ const Wallet = () => {
                     </Button>
                     <div className="text-sm text-muted-foreground text-center space-y-1">
                       <p>💰 Minimum withdrawal: ₦50,000</p>
-                      <p>💳 Processing fee: ₦1,500</p>
+                      <p>💳 Processing fee:</p>
+                      <p className="text-xs">• Up to ₦100,000: ₦1,500</p>
+                      <p className="text-xs">• Above ₦100,000: ₦3,500</p>
                     </div>
                   </div>
                 </DialogContent>
               </Dialog>
               <p className="text-xs text-white/70">
-                Minimum withdrawal: ₦50,000 • Fee: ₦1,500
+                Min: ₦50,000 • Fee: ₦1,500 (up to ₦100k) / ₦3,500 (above ₦100k)
               </p>
             </div>
           </CardContent>
